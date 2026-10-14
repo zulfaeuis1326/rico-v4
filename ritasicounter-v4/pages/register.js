@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Combobox from "../components/Combobox";
+import AuthDots from "../components/AuthDots";
 import { apiJson } from "../lib/apiClient";
 
 function EyeIcon() {
@@ -85,10 +86,15 @@ export default function Register() {
 
   return (
     <div className="auth-wrap">
+      <AuthDots />
       <div className="auth-card">
         <img src="/logo.png" alt="Logo" className="auth-logo" onError={function (e) { e.target.style.display = "none"; }} />
-        <div className="auth-title">Daftar Akun</div>
-        <div className="auth-subtitle">Buat akun baru untuk mulai pakai RitasiCounter</div>
+        <div className="auth-brand">
+          <span className="auth-mark">R</span>
+          <span className="auth-brand-text">RitasiCounter <em>V4</em></span>
+        </div>
+        <h1 className="auth-title">Buat akun baru</h1>
+        <p className="auth-subtitle">Daftar untuk mulai mencatat ritasi. Akun pertama otomatis menjadi superadmin.</p>
 
         {pendingMessage ? (
           <div className="field-group" style={{ textAlign: "center" }}>

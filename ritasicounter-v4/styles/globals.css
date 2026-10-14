@@ -107,3 +107,35 @@ td{padding:9px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
 @keyframes sh{to{background-position:-200% 0}}
 .chip-row{display:flex;gap:6px;flex-wrap:wrap}.chip{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--soft);border:1px solid var(--border);color:var(--muted)}
 .unit-hourly-table td,.list-table td{white-space:nowrap}
+
+/* ===== Auth V4: industrial, profesional (stone + amber safety) ===== */
+.auth-wrap{--a-bg:#faf7f1;--a-card:#fffdf9;--a-ink:#1c1917;--a-muted:#78716c;--a-line:#e7e0d3;--a-accent:#c2410c;--a-accent-ink:#fff7ed;--a-focus:rgba(194,65,12,.14);--a-shadow:0 1px 2px rgba(28,25,23,.07),0 24px 60px -28px rgba(28,25,23,.35);
+  position:relative;overflow:hidden;background:var(--a-bg);background-image:radial-gradient(1000px 500px at 50% -10%,#f5ede0 0%,rgba(245,237,224,0) 60%);}
+[data-theme="dark"] .auth-wrap{--a-bg:#0c0a09;--a-card:#171412;--a-ink:#f5f4f2;--a-muted:#a8a29e;--a-line:#2b2622;--a-accent:#f59e0b;--a-accent-ink:#1c1005;--a-focus:rgba(245,158,11,.18);--a-shadow:0 24px 60px -20px rgba(0,0,0,.7);
+  background-image:radial-gradient(1000px 500px at 50% -10%,#231a10 0%,rgba(35,26,16,0) 60%);}
+.auth-bg-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.auth-wrap .auth-card{position:relative;max-width:400px;padding:34px 30px 26px;border-radius:20px;background:var(--a-card);border:1px solid var(--a-line);box-shadow:var(--a-shadow);text-align:left;}
+.auth-brand{display:flex;align-items:center;gap:11px;margin-bottom:20px;}
+.auth-mark{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-family:Archivo,Inter,sans-serif;font-weight:800;font-size:20px;color:#fff;background:#1c1917;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25);}
+[data-theme="dark"] .auth-mark{background:#f59e0b;color:#1c1005;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2);}
+.auth-brand-text{font-family:Archivo,Inter,sans-serif;font-weight:700;font-size:16.5px;letter-spacing:-.01em;color:var(--a-ink);}
+.auth-brand-text em{font-style:normal;color:var(--a-accent);}
+.auth-wrap .auth-title{font-family:Archivo,Inter,sans-serif;font-weight:800;font-size:26px;letter-spacing:-.025em;line-height:1.15;margin:0 0 6px;color:var(--a-ink);}
+.auth-wrap .auth-subtitle{font-size:13.5px;line-height:1.6;color:var(--a-muted);margin:0 0 20px;}
+.auth-form .field-group{margin-bottom:14px;}
+.auth-form .field-label{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--a-muted);}
+.auth-form .field-input{margin-top:7px;background:var(--a-card);border:1.5px solid var(--a-line);border-radius:11px;padding:11px 13px;font-size:14.5px;color:var(--a-ink);}
+.auth-form .field-input::placeholder{color:var(--a-muted);opacity:.7;}
+.auth-form .field-input:focus{border-color:var(--a-accent);box-shadow:0 0 0 3px var(--a-focus);}
+.auth-form .field-error{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
+[data-theme="dark"] .auth-form .field-error{background:rgba(220,38,38,.12);color:#fca5a5;border-color:rgba(220,38,38,.35);}
+.auth-wrap .auth-submit{margin-top:8px;border-radius:11px;padding:13px;font-family:Archivo,Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:.01em;background:var(--a-accent);color:#fff;border:none;box-shadow:0 10px 22px -10px rgba(194,65,12,.6);transition:transform .06s ease,filter .15s ease;}
+[data-theme="dark"] .auth-wrap .auth-submit{box-shadow:0 10px 22px -10px rgba(245,158,11,.5);}
+.auth-wrap .auth-submit:hover:not(:disabled){filter:brightness(1.06);}
+.auth-wrap .auth-submit:active:not(:disabled){transform:scale(.985);}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:20px 0 10px;color:var(--a-muted);font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:var(--a-line);}
+.auth-wrap .auth-switch{text-align:center;color:var(--a-muted);}
+.auth-wrap .auth-switch a{color:var(--a-accent);}
+.auth-wrap .auth-logo{display:none;}
+.auth-foot{position:relative;background:transparent;border:none;}
