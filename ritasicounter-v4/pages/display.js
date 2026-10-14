@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { atLeast } from "../lib/roles";
 import { useAuthCheck } from "../hooks/useAuthCheck";
-import Topbar from "../components/home/Topbar";
+import AdminShell from "../components/AdminShell";
 import DetailTable from "../components/display/DetailTable";
 
 // three.js butuh DOM/canvas -- WAJIB no-SSR, kalau di-render di server bakal error.
@@ -80,33 +80,32 @@ export default function Display() {
     );
   }
 
-  const isAdmin = atLeast(authUser.role, "admin");
-  const canMonitorAll = atLeast(authUser.role, "pengawas");
   const modeLabel = data?.shift?.shiftType === 2 ? "malam" : "siang";
 
   return (
-    <div className="v4-page">
-      <Topbar authUser={authUser} canMonitorAll={canMonitorAll} isAdmin={isAdmin} isOperator={false} onLogout={handleLogout} currentPage="display" />
-
-      <div className="display-page">
-        <div className="display-topstrip">
-          <span className="display-live-dot">&#9679; LIVE</span>
-          <span>{clock}</span>
-          <span className="display-topstrip-sep">&middot;</span>
-          <span>{data?.shift ? data.shift.label : "Tidak ada shift berjalan"}</span>
-          <span className="display-topstrip-sep">&middot;</span>
-          <span>mode: {modeLabel}</span>
-          <div className="display-topstrip-spacer" />
-          <div className="display-view-toggle">
-            <button className={view === "table" ? "active" : ""} onClick={() => setView("table")}>Tabel Detail</button>
-            <button className={view === "3d" ? "active" : ""} onClick={() => setView("3d")}>Animasi 3D</button>
-          </div>
+    <AdminShell
+      authUser={authUser}
+      active="display"
+      title="Live TV"
+      subtitle={(data?.shift ? data.shift.label : "Tidak ada shift berjalan") + " · mode " + modeLabel + " · " + clock}
+      onLogout={handleLogout}
+      actions={
+        <div className="dash-tabs">
+          <button className={view === "table" ? "active" : ""} onClick={() => setView("table")}>Tabel Detail</button>
+          <button className={view === "3d" ? "active" : ""} onClick={() => setView("3d")}>Animasi 3D</button>
         </div>
-
-        {error && <div className="card"><div className="hint" style={{ color: "var(--danger)" }}>Error: {error}</div></div>}
-
-        {view === "table" ? <DetailTable data={data} /> : <Scene3D data={data} />}
+      }
+    >
+      <div className="display-topstrip">
+        <span className="display-live-dot">&#9679; LIVE</span>
+        <span>{clock}</span>
+        <span className="display-topstrip-sep">&middot;</span>
+        <span>{data?.shift ? data.shift.label : "Tidak ada shift berjalan"}</span>
       </div>
-    </div>
+
+      {error && <div className="dash-card"><div className="hint" style={{ color: "var(--bad)" }}>Error: {error}</div></div>}
+
+      {view === "table" ? <DetailTable data={data} /> : <Scene3D data={data} />}
+    </AdminShell>
   );
 }

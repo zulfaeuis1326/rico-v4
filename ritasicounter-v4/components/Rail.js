@@ -22,7 +22,10 @@ export default function Rail({ authUser, active, onLogout }) {
 
   return (
     <nav className="dash-rail">
-      <span className="rail-mark">R</span>
+      <span className="rail-mark" title="RitasiCounter">
+        <span aria-hidden="true">R</span>
+        <img src="/logo.png" alt="Logo perusahaan" onError={function (e) { e.target.style.display = "none"; }} />
+      </span>
       <Btn id="input" href="/" label={homeLabel}>
         <Ico d={<><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></>} />
       </Btn>

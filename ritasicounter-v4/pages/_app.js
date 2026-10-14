@@ -6,9 +6,9 @@ import ThemeToggle from "../components/ThemeToggle";
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
-  // Halaman utama (V4) punya tombol tema sendiri di Topbar, jadi tombol
-  // melayang global disembunyikan di situ biar gak dobel.
-  const hideFloatingToggle = router.pathname === "/";
+  // Rail di semua halaman setelah login sudah punya toggle tema sendiri,
+  // jadi tombol melayang hanya tampil di halaman auth (login/register).
+  const showFloatingToggle = router.pathname === "/login" || router.pathname === "/register";
 
   return (
     <>
@@ -36,7 +36,7 @@ export default function App({ Component, pageProps }) {
           }
         `}
       </Script>
-      {!hideFloatingToggle && <ThemeToggle />}
+      {showFloatingToggle && <ThemeToggle />}
       <Component {...pageProps} />
     </>
   );

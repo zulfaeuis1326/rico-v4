@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { atLeast } from "../lib/roles";
 import { ToastProvider, useToast } from "../components/Toast";
 import { apiJson } from "../lib/apiClient";
-import Topbar from "../components/home/Topbar";
+import Rail from "../components/Rail";
 import Combobox from "../components/Combobox";
 import JamManualModal from "../components/home/JamManualModal";
 import UnitSetupScreen from "../components/home/UnitSetupScreen";
@@ -183,15 +183,23 @@ function HomeContent() {
   }
 
   return (
-    <div className="v4-page">
-      <Topbar authUser={authUser} canMonitorAll={canMonitor} isAdmin={isAdmin} isOperator={isOperator} onLogout={handleLogout} live={live} clock={clock} />
-      <main className="container">
-        <div className="card hero">
+    <div className="v4-page" style={{ paddingLeft: 0 }}>
+      <div className="dash admin">
+        <Rail authUser={authUser} active="input" onLogout={handleLogout} />
+        <main className="dash-main">
+          <div className="dash-head">
+            <div className="grow">
+              <h1>{isOperator ? "Input Ritasi" : "Monitoring Ritasi"}</h1>
+              <div className="sub">{recap && recap.shift ? recap.shift.label : "Memuat shift..."} · {clock} · {authUser.username}</div>
+            </div>
+            <span className="live-pill"><span className={"live-dot" + (live ? "" : " off")} />{live ? "LIVE" : "SYNC"}</span>
+          </div>
+        <div className="dash-card hero">
           <div className="shift-banner">
             <div className="grow">
-              <div style={{ fontSize: 12, opacity: .85, fontWeight: 700, letterSpacing: ".08em" }}>SHIFT BERJALAN · {clock}</div>
+              <div style={{ fontSize: 11.5, opacity: .75, fontWeight: 800, letterSpacing: ".09em" }}>SHIFT BERJALAN · JAM {recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "--"}</div>
               <div className="clock" style={{ fontSize: 24 }}>{recap && recap.shift ? recap.shift.label : "Memuat shift..."}</div>
-              <div style={{ fontSize: 12.5, opacity: .9 }}>Jam aktif: {recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "-"} · {recap ? recap.tzInfo : ""}</div>
+              <div style={{ fontSize: 12.5, opacity: .75 }}>Jam aktif: {recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "-"} · {recap ? recap.tzInfo : ""}</div>
             </div>
             <span className={"approve-pill " + reviewStatus}>{reviewStatus === "approved" ? "Approved" : "Pending review"}</span>
           </div>
@@ -199,16 +207,16 @@ function HomeContent() {
 
         {canMonitor && (
           <div className="kpi-grid">
-            <div className="kpi" style={{ "--kc": "#4f46e5" }}><div className="kpi-label">Total Rit Shift</div><div className="kpi-value">{recap ? recap.grandTotal : 0}</div><div className="kpi-sub">{filtered.length} unit aktif berproduksi</div></div>
-            <div className="kpi" style={{ "--kc": "#06b6d4" }}><div className="kpi-label">Jam Berjalan</div><div className="kpi-value">{recap ? String(recap.currentHour).padStart(2, "0") : "--"}</div><div className="kpi-sub">{recap && recap.grandHourlyTotals && recap.hours ? (recap.grandHourlyTotals[recap.hours.indexOf(recap.currentHour)] || 0) + " rit jam ini" : ""}</div></div>
-            <div className="kpi" style={{ "--kc": "#16a34a" }}><div className="kpi-label">Fleet Aktif</div><div className="kpi-value">{fleetGroups.length}</div><div className="kpi-sub">{fleets.length} fleet terdaftar</div></div>
-            <div className="kpi" style={{ "--kc": "#d97706" }}><div className="kpi-label">Top Material</div><div className="kpi-value" style={{ fontSize: 22 }}>{topMat(recap)}</div><div className="kpi-sub">komposisi shift ini</div></div>
+            <div className="kpi" style={{ "--kc": "#0f766e" }}><div className="kpi-label">Total Rit Shift</div><div className="kpi-value">{recap ? recap.grandTotal : 0}</div><div className="kpi-sub">{filtered.length} unit aktif berproduksi</div></div>
+            <div className="kpi" style={{ "--kc": "#b45309" }}><div className="kpi-label">Jam Berjalan</div><div className="kpi-value">{recap ? String(recap.currentHour).padStart(2, "0") : "--"}</div><div className="kpi-sub">{recap && recap.grandHourlyTotals && recap.hours ? (recap.grandHourlyTotals[recap.hours.indexOf(recap.currentHour)] || 0) + " rit jam ini" : ""}</div></div>
+            <div className="kpi" style={{ "--kc": "#15803d" }}><div className="kpi-label">Fleet Aktif</div><div className="kpi-value">{fleetGroups.length}</div><div className="kpi-sub">{fleets.length} fleet terdaftar</div></div>
+            <div className="kpi" style={{ "--kc": "#57534e" }}><div className="kpi-label">Top Material</div><div className="kpi-value" style={{ fontSize: 22 }}>{topMat(recap)}</div><div className="kpi-sub">komposisi shift ini</div></div>
           </div>
         )}
 
         <div className="v4-grid">
           {canClick && (
-            <section className="card">
+            <section className="dash-card">
               <h2 className="sec-title-icon">Klik Ritasi</h2>
               <div className="field-label" style={{ marginBottom: 6 }}>Unit</div>
               {isAdmin ? (
@@ -242,7 +250,7 @@ function HomeContent() {
 
           <div>
             {canMonitor && (
-              <section className="card">
+              <section className="dash-card">
                 <h2 className="sec-title-icon">Rekap per Fleet ({filtered.length} unit)</h2>
                 <div className="rekap-tools">
                   <input className="rekap-search" value={search} onChange={function (e) { setSearch(e.target.value); }} placeholder="Cari unit / fleet / PIT..." />
@@ -284,7 +292,7 @@ function HomeContent() {
             )}
 
             {canMonitor && (
-              <section className="card">
+              <section className="dash-card">
                 <h2 className="sec-title-icon">Shift & Approval</h2>
                 <div className="hint" style={{ marginBottom: 10 }}>Approval pengawas bersifat stempel resmi — data tetap masuk rekap walau belum di-approve.</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -314,7 +322,7 @@ function HomeContent() {
               </section>
             )}
 
-            <section className="card">
+            <section className="dash-card">
               <h2 className="sec-title-icon">Riwayat ({history.length})</h2>
               {history.length === 0 && <div className="hint">Belum ada ritasi.</div>}
               <div className="history-list-scroll">
@@ -335,9 +343,10 @@ function HomeContent() {
             </section>
           </div>
         </div>
-      </main>
+          <div className="app-footer">RitasiCounter V4 · realtime SSE · designed by Najib.dev</div>
+        </main>
+      </div>
       <JamManualModal open={jamOpen} onClose={function () { setJamOpen(false); }} shiftType={recap && recap.shift ? recap.shift.shift_type : 1} currentHour={recap ? recap.currentHour : 0} onPick={setSelectedJam} />
-      <div className="app-footer">RitasiCounter V4 · realtime SSE · designed by Najib.dev</div>
     </div>
   );
 }
