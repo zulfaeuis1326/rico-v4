@@ -71,6 +71,17 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--a
 .material-btn,.mat-btn{border:1.5px solid var(--border);background:var(--soft);border-radius:14px;padding:10px 6px;font-weight:800;font-size:13px;cursor:pointer;display:flex;flex-direction:column;gap:4px;align-items:center;color:var(--text)}
 .material-btn.active,.mat-btn.active{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 8px 18px -10px rgba(15,118,110,.7);}
 .mat-btn-cnt{font-size:11px;font-weight:600;opacity:.8}
+/* ===== Tombol material: seragam, beda warna + nama ===== */
+.mat-grid{grid-template-columns:repeat(5,1fr);}
+.mat-btn{position:relative;background:var(--card);border-radius:14px;padding:10px 4px 9px;font-family:var(--disp);font-weight:800;font-size:12.5px;letter-spacing:.02em;min-height:72px;justify-content:center;}
+.mat-btn-name{display:flex;align-items:center;gap:6px;}
+.mat-dot{width:10px;height:10px;border-radius:50%;background:var(--mc,#999);box-shadow:0 0 0 3px color-mix(in srgb,var(--mc,#999) 18%,transparent);flex-shrink:0;}
+.mat-btn .mat-btn-cnt{font-family:var(--font);font-size:10.5px;font-weight:600;color:var(--muted);opacity:1;}
+.mat-btn:hover{border-color:var(--mc);}
+.mat-btn.active{background:var(--mc);border-color:var(--mc);color:#fff;box-shadow:0 10px 20px -12px var(--mc);}
+.mat-btn.active .mat-dot{background:#fff;box-shadow:none;}
+.mat-btn.active .mat-btn-cnt{color:rgba(255,255,255,.88);}
+@media(max-width:560px){.mat-grid{gap:6px;}.mat-btn{font-size:11px;min-height:66px;padding:8px 2px 7px;border-radius:12px;}.mat-btn-name{gap:5px;}}
 .big-click-btn{width:100%;border:none;border-radius:16px;padding:17px;font-family:var(--disp);font-size:21px;font-weight:800;letter-spacing:.06em;cursor:pointer;color:#fff;background:#15803d;box-shadow:0 14px 28px -14px rgba(21,128,61,.65);}
 .big-click-btn:active:not(:disabled){transform:scale(.98)}.big-click-btn:disabled{filter:grayscale(.6);opacity:.55}
 .ritasi-jam-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--soft);border:1px dashed var(--border);border-radius:12px;padding:10px 12px;margin-top:12px}

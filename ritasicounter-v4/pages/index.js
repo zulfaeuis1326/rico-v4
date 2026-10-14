@@ -9,7 +9,7 @@ import JamManualModal from "../components/home/JamManualModal";
 import UnitSetupScreen from "../components/home/UnitSetupScreen";
 
 const MATERIALS = ["OB", "COAL", "SOIL", "SOLU", "MUD"];
-const MAT_COLOR = { OB: "#8b5a2b", COAL: "#334155", SOIL: "#b45309", SOLU: "#0891b2", MUD: "#65a30d" };
+const MAT_COLOR = { OB: "#9a6b1f", COAL: "#44403c", SOIL: "#c2701d", SOLU: "#0e7490", MUD: "#6d7c2f" };
 
 function fmtCell(h) {
   if (!h || h.total === 0) return "-";
@@ -220,8 +220,8 @@ function HomeContent() {
               <div className="mat-grid">
                 {MATERIALS.map(function (m) {
                   const c = selRecap && selRecap.materialTotals ? (selRecap.materialTotals[m] || 0) : 0;
-                  return (<button key={m} className={"mat-btn" + (material === m ? " active" : "")} onClick={function () { setMaterial(m); }}>
-                    <span><span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 5, background: MAT_COLOR[m], marginRight: 6 }} />{m}</span>
+                  return (<button key={m} className={"mat-btn" + (material === m ? " active" : "")} style={{ "--mc": MAT_COLOR[m] }} onClick={function () { setMaterial(m); }}>
+                    <span className="mat-btn-name"><span className="mat-dot" />{m}</span>
                     <span className="mat-btn-cnt">{c} rit</span>
                   </button>);
                 })}

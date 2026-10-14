@@ -19,6 +19,7 @@ function formatJamCell(h) {
 }
 
 const MATERIALS = ["OB", "COAL", "SOIL", "SOLU", "MUD"];
+const MAT_COLOR = { OB: "#9a6b1f", COAL: "#44403c", SOIL: "#c2701d", SOLU: "#0e7490", MUD: "#6d7c2f" };
 
 export default function RitasiPanel({
   isAdmin,
@@ -77,9 +78,10 @@ export default function RitasiPanel({
             <button
               key={m}
               className={"mat-btn " + (material === m ? "active" : "")}
+              style={{ "--mc": MAT_COLOR[m] }}
               onClick={function () { onChangeMaterial(m); }}
             >
-              {m}
+              <span className="mat-btn-name"><span className="mat-dot" />{m}</span>
               <span className="mat-btn-cnt">{count} rit</span>
             </button>
           );
