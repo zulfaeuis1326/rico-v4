@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { apiJson } from "../lib/apiClient";
-import AuthDots from "../components/AuthDots";
 
 function EyeIcon() {
   return (
@@ -47,16 +46,12 @@ export default function Login() {
 
   return (
     <div className="auth-wrap">
-      <AuthDots />
       <div className="auth-card">
-        <div className="auth-brand">
-          <span className="auth-mark">R</span>
-          <span className="auth-brand-text">RitasiCounter <em>V4</em></span>
-        </div>
-        <h1 className="auth-title">Selamat datang kembali</h1>
-        <p className="auth-subtitle">Masuk untuk mencatat dan memantau ritasi hauler.</p>
+        <img src="/logo.png" alt="Logo" className="auth-logo" onError={function (e) { e.target.style.display = "none"; }} />
+        <div className="auth-title">RitasiCounter</div>
+        <div className="auth-subtitle">Masuk ke akun kamu</div>
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit}>
           <div className="field-group">
             <label className="field-label" htmlFor="username">Username</label>
             <input
@@ -66,7 +61,6 @@ export default function Login() {
               onChange={function (e) { setUsername(e.target.value); }}
               autoCapitalize="none"
               autoComplete="username"
-              placeholder="cth. operator01"
             />
           </div>
 
@@ -80,7 +74,6 @@ export default function Login() {
                 value={password}
                 onChange={function (e) { setPassword(e.target.value); }}
                 autoComplete="current-password"
-                placeholder="Password kamu"
               />
               <button
                 type="button"
@@ -94,19 +87,18 @@ export default function Login() {
             </div>
           </div>
 
-          {error && <div className="field-error" role="alert">{error}</div>}
+          {error && <div className="field-error">{error}</div>}
 
           <button className="auth-submit" disabled={loading}>
             {loading ? "Memproses..." : "Masuk"}
           </button>
         </form>
 
-        <div className="auth-divider"><span>baru di sini?</span></div>
         <div className="auth-switch">
-          Belum punya akun? <a href="/register">Daftar sekarang</a>
+          Belum punya akun? <a href="/register">Daftar di sini</a>
         </div>
       </div>
-      <div className="app-footer auth-foot">RitasiCounter V4 · designed by Najib.dev</div>
+      <div className="app-footer">designed by Najib.dev</div>
     </div>
   );
 }
