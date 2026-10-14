@@ -5,7 +5,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { atLeast } from "../lib/roles";
-import { useTheme } from "../hooks/useTheme";
+import Rail from "../components/Rail";
 
 const TEAL = "#0f766e";
 const TEAL_LIGHT = "#5eead4";
@@ -13,12 +13,6 @@ const AMBER = "#b45309";
 const TICK = "#8a8478";
 const GRID = "#e5ded1";
 const MAT_COLORS = { OB: "#9a6b1f", COAL: "#44403c", SOIL: "#c2701d", SOLU: "#0e7490", MUD: "#6d7c2f" };
-
-function Ico({ d }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
-  );
-}
 
 function Ring({ pct, color, size }) {
   const s = size || 52;
@@ -46,7 +40,6 @@ function ChartTip({ active, payload, label, labelPrefix }) {
 
 export default function Dashboard() {
   const router = useRouter();
-  const [theme, toggleTheme] = useTheme();
   const [authUser, setAuthUser] = useState(undefined);
   const [range, setRange] = useState("day");
   const [data, setData] = useState(null);
@@ -112,56 +105,15 @@ export default function Dashboard() {
   if (authUser === undefined) return <div className="container"><div className="card"><div className="hint">Memuat...</div></div></div>;
   if (!authUser) return null;
 
-  const isAdmin = atLeast(authUser.role, "admin");
-  const canMonitor = atLeast(authUser.role, "pengawas");
   const radarData = (data ? data.materialSeries : []).filter(function (m) { return m.total > 0; }).map(function (m) { return { m: m.name, v: m.total }; });
   const exportHref = recap && recap.shift ? "/api/shift/export?shiftId=" + recap.shift.id : "/api/shift/export";
 
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }
 
-  function RailBtn({ href, label, active, onClick, children }) {
-    if (href) return <a className={"rail-btn" + (active ? " active" : "")} href={href} title={label}>{children}</a>;
-    return <button className="rail-btn" title={label} onClick={onClick}>{children}</button>;
-  }
-
   return (
     <div className="v4-page" style={{ paddingLeft: 0 }}>
       <div className="dash">
-        {/* ===== Rel ikon kiri ===== */}
-        <nav className="dash-rail">
-          <span className="rail-mark">R</span>
-          <RailBtn href="/" label={isAdmin || authUser.role === "operator" ? "Input Ritasi" : "Monitoring"}>
-            <Ico d={<><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></>} />
-          </RailBtn>
-          <RailBtn label="Dashboard" active>
-            <Ico d={<><line x1="4" y1="20" x2="20" y2="20" /><rect x="6" y="13" width="3" height="7" /><rect x="11" y="5" width="3" height="15" /><rect x="16" y="9" width="3" height="11" /></>} />
-          </RailBtn>
-          {canMonitor && (
-            <RailBtn href="/display" label="Live TV">
-              <Ico d={<><rect x="2" y="4" width="20" height="13" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></>} />
-            </RailBtn>
-          )}
-          {canMonitor && (
-            <RailBtn href="/admin/fleet" label="Kelola Fleet">
-              <Ico d={<><rect x="1" y="7" width="13" height="10" /><path d="M14 10h4l4 4v3h-8z" /><circle cx="6" cy="19" r="1.6" /><circle cx="17" cy="19" r="1.6" /></>} />
-            </RailBtn>
-          )}
-          {isAdmin && (
-            <RailBtn href="/admin/operators" label="Kelola Akun">
-              <Ico d={<><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6" /></>} />
-            </RailBtn>
-          )}
-          <span className="rail-spacer" />
-          {theme !== null && (
-            <RailBtn label="Ganti tema" onClick={toggleTheme}>
-              <span style={{ fontSize: 16 }}>{theme === "dark" ? "☀" : "☾"}</span>
-            </RailBtn>
-          )}
-          <RailBtn label="Logout" onClick={logout}>
-            <Ico d={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>} />
-          </RailBtn>
-          <span className="rail-avatar" title={authUser.username}>{authUser.username.charAt(0).toUpperCase()}</span>
-        </nav>
+        <Rail authUser={authUser} active="dashboard" onLogout={logout} />
 
         {/* ===== Kolom utama ===== */}
         <main className="dash-main">

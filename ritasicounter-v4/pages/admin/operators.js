@@ -2,7 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { atLeast, ALL_ROLES, ROLE_LABEL } from "../../lib/roles";
 import { useAuthCheck } from "../../hooks/useAuthCheck";
-import Topbar from "../../components/home/Topbar";
+import AdminShell from "../../components/AdminShell";
+
+const ROLE_COLOR = { superadmin: "#b45309", admin: "#c2410c", pengawas: "#0f766e", operator: "#57534e" };
 
 export default function AdminOperators() {
   const router = useRouter();
@@ -204,47 +206,77 @@ export default function AdminOperators() {
   }
 
   const isSuperadmin = authUser.role === "superadmin";
-  const isAdmin = atLeast(authUser.role, "admin");
-  const canMonitorAll = atLeast(authUser.role, "pengawas");
   const assignableRoles = ALL_ROLES;
 
+  const pending = list.filter((u) => u.status === "pending");
+  const active = list.filter((u) => u.status !== "pending");
+
+  function UserCard({ u, children }) {
+    return (
+      <div className="user-card">
+        <span className="u-avatar" style={{ background: ROLE_COLOR[u.role] || "#57534e" }}>
+          {u.username.charAt(0).toUpperCase()}
+        </span>
+        <div className="u-main">
+          <div className="u-top">
+            <b className="u-name">{u.username}</b>
+            <span className="role-badge" style={{ background: ROLE_COLOR[u.role] || "#57534e" }}>{ROLE_LABEL[u.role] || u.role}</span>
+            {u.status === "pending" && <span className="pill-pending">Menunggu approval</span>}
+          </div>
+          <div className="hint">
+            {u.role === "operator"
+              ? (u.unit_name ? `Unit: ${u.unit_name}` : "Belum pilih unit")
+              : "Tidak terkunci ke unit manapun"}
+          </div>
+          {children && <div className="u-actions">{children}</div>}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="v4-page">
-      <Topbar authUser={authUser} canMonitorAll={canMonitorAll} isAdmin={isAdmin} isOperator={false} onLogout={handleLogout} currentPage="akun" />
+    <AdminShell
+      authUser={authUser}
+      active="akun"
+      title="Kelola Akun"
+      subtitle="Approval, role, unit, dan sesi semua pengguna"
+      onLogout={handleLogout}
+      actions={
+        <div className="hero-meta" style={{ marginTop: 0 }}>
+          <span className="hero-chip"><b>{list.length}</b> Akun</span>
+          {pending.length > 0 && <span className="hero-chip accent"><b>{pending.length}</b> menunggu</span>}
+        </div>
+      }
+    >
+      {error && <div className="dash-card"><div className="hint" style={{ color: "var(--bad)" }}>{error}</div></div>}
 
-      <div className="container">
-        {error && <div className="card"><div className="hint" style={{ color: "var(--danger)" }}>{error}</div></div>}
-
-        <div className="section-title">Daftar Akun</div>
-        {list.map((u) => (
-          <div key={u.id} className="history-row">
-            <div className="history-info">
-              <b>{u.username}</b> ({ROLE_LABEL[u.role] || u.role})
-              {u.status === "pending" && (
-                <span className="badge-pending" style={{ marginLeft: 6, color: "var(--amber, #d97706)", fontWeight: 700, fontSize: 11 }}>
-                  MENUNGGU APPROVAL
-                </span>
-              )}
-              <div className="hint">
-                {u.role === "operator"
-                  ? (u.unit_name ? `Unit: ${u.unit_name}` : "Belum pilih unit")
-                  : "Tidak terkunci ke unit manapun"}
-              </div>
-            </div>
-
-            {u.status === "pending" ? (
-              <div className="akun-row-actions">
-                <button className="btn btn-secondary" style={{ width: "auto", padding: "0 14px" }} onClick={() => handleApprove(u.id, u.username)}>
+      {pending.length > 0 && (
+        <div className="dash-card">
+          <h3>Menunggu Approval ({pending.length})</h3>
+          <div className="c-sub">Akun baru belum bisa login sebelum di-approve.</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+            {pending.map((u) => (
+              <UserCard key={u.id} u={u}>
+                <button className="btn btn-primary" style={{ width: "auto", padding: "8px 18px" }} onClick={() => handleApprove(u.id, u.username)}>
                   Approve
                 </button>
                 <button className="btn-mini-danger" onClick={() => handleReject(u.id, u.username)}>
                   Tolak
                 </button>
-              </div>
-            ) : (
-            <div className="akun-row-actions">
+              </UserCard>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="dash-card">
+        <h3>Semua Akun ({active.length})</h3>
+        <div className="c-sub">atur role, unit, paksa logout, atau hapus akun.</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+          {active.map((u) => (
+            <UserCard key={u.id} u={u}>
               {u.role === "operator" && (
-                <div className="akun-op-actions">
+                <>
                   <select
                     className="akun-unit-select"
                     defaultValue={u.unit_id || ""}
@@ -255,61 +287,46 @@ export default function AdminOperators() {
                       <option key={un.id} value={un.id}>{un.name}</option>
                     ))}
                   </select>
-                  <div className="akun-op-btnrow">
-                    {u.unit_id && (
-                      <button className="btn-mini-danger" onClick={() => handleReset(u.id, u.username)}>
-                        Reset Unit
-                      </button>
-                    )}
-                    {u.id !== authUser.id && (
-                      <button className="btn-mini-danger" onClick={() => handleRevoke(u.id, u.username)}>
-                        Paksa Logout
-                      </button>
-                    )}
-                    {u.id !== authUser.id && (
-                      <button className="btn-mini-danger" onClick={() => handleDelete(u.id, u.username)}>
-                        Hapus Akun
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {u.role !== "operator" && u.id !== authUser.id && (
-                <>
-                  {isSuperadmin && (u.role === "admin" || u.role === "pengawas") && (
-                    <select
-                      defaultValue=""
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val) handleSetRole(u.id, u.username, val);
-                        e.target.value = "";
-                      }}
-                    >
-                      <option value="" disabled>Ubah role...</option>
-                      {assignableRoles
-                        .filter((r) => r !== u.role)
-                        .map((r) => (
-                          <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-                        ))}
-                    </select>
-                  )}
-                  <button className="btn-mini-danger" onClick={() => handleRevoke(u.id, u.username)}>
-                    Paksa Logout
-                  </button>
-                  {(authUser.role === "superadmin" || (u.role !== "admin" && u.role !== "superadmin")) && (
-                    <button className="btn-mini-danger" onClick={() => handleDelete(u.id, u.username)}>
-                      Hapus Akun
+                  {u.unit_id && (
+                    <button className="btn-mini-danger" onClick={() => handleReset(u.id, u.username)}>
+                      Reset Unit
                     </button>
                   )}
                 </>
               )}
-            </div>
-            )}
-          </div>
-        ))}
+              {u.role !== "operator" && isSuperadmin && (u.role === "admin" || u.role === "pengawas") && (
+                <select
+                  className="akun-unit-select"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) handleSetRole(u.id, u.username, val);
+                    e.target.value = "";
+                  }}
+                >
+                  <option value="" disabled>Ubah role...</option>
+                  {assignableRoles
+                    .filter((r) => r !== u.role)
+                    .map((r) => (
+                      <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                    ))}
+                </select>
+              )}
+              {u.id !== authUser.id && (
+                <button className="btn-mini-danger" onClick={() => handleRevoke(u.id, u.username)}>
+                  Paksa Logout
+                </button>
+              )}
+              {u.id !== authUser.id && (authUser.role === "superadmin" || (u.role !== "admin" && u.role !== "superadmin")) && (
+                <button className="btn-mini-danger" onClick={() => handleDelete(u.id, u.username)}>
+                  Hapus Akun
+                </button>
+              )}
+            </UserCard>
+          ))}
+        </div>
         {list.length === 0 && !error && <div className="hint">Belum ada akun.</div>}
       </div>
-    </div>
+    </AdminShell>
   );
 }

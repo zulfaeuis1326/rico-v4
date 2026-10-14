@@ -2,15 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { atLeast } from "../../lib/roles";
 import Combobox from "../../components/Combobox";
-import Topbar from "../../components/home/Topbar";
-
-function ChevronIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
+import AdminShell from "../../components/AdminShell";
 
 export default function KelolaFleet() {
   const router = useRouter();
@@ -31,6 +23,7 @@ export default function KelolaFleet() {
   const [newPitName, setNewPitName] = useState("");
   const [newFleetName, setNewFleetName] = useState("");
   const [newFleetPit, setNewFleetPit] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" })
@@ -181,26 +174,49 @@ export default function KelolaFleet() {
 
   const selectedUnit = units.find((u) => String(u.id) === selectedUnitId) || null;
 
-  const isAdmin = atLeast(authUser.role, "admin");
-  const canMonitorAll = atLeast(authUser.role, "pengawas");
-
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.href = "/login";
   }
 
-  return (
-    <div className="v4-page">
-      <Topbar authUser={authUser} canMonitorAll={canMonitorAll} isAdmin={isAdmin} isOperator={false} onLogout={handleLogout} currentPage="fleet" />
+  const q = search.trim().toLowerCase();
+  const groups = fleets.map(function (f) {
+    const members = units.filter(function (u) {
+      if (String(u.fleet_id) !== String(f.id)) return false;
+      if (!q) return true;
+      return u.name.toLowerCase().includes(q) || f.name.toLowerCase().includes(q) || (u.pit_name || "").toLowerCase().includes(q);
+    });
+    return { fleet: f, members };
+  });
+  const unassigned = units.filter(function (u) {
+    if (u.fleet_id) return false;
+    if (!q) return true;
+    return u.name.toLowerCase().includes(q) || (u.pit_name || "").toLowerCase().includes(q);
+  });
 
-      <main className="container">
+  return (
+    <AdminShell
+      authUser={authUser}
+      active="fleet"
+      title="Kelola Fleet"
+      subtitle="Assign unit HD ke PC/Loader dan lokasi PIT"
+      onLogout={handleLogout}
+      actions={
+        <div className="hero-meta" style={{ marginTop: 0 }}>
+          <span className="hero-chip"><b>{fleets.length}</b> Fleet</span>
+          <span className="hero-chip"><b>{units.length}</b> Unit</span>
+          <span className="hero-chip"><b>{pits.length}</b> PIT</span>
+        </div>
+      }
+    >
       {error && (
-        <div className="card"><div className="hint" style={{ color: "var(--danger)" }}>Error: {error}</div></div>
+        <div className="dash-card"><div className="hint" style={{ color: "var(--bad)" }}>Error: {error}</div></div>
       )}
 
-      <div className="card">
-        <div className="section-title">Unit Hauler → Masuk PC Berapa, Lokasi Mana</div>
-        <div className="field-label" style={{ marginBottom: 6 }}>Unit</div>
+      <div className="dash-card">
+        <h3>Assign Unit</h3>
+        <div className="c-sub">Pilih unit, lalu tentukan PC dan PIT-nya.</div>
+        <div className="field-label" style={{ margin: "12px 0 6px" }}>Unit</div>
         <Combobox
           value={selectedUnitId}
           onChange={setSelectedUnitId}
@@ -211,6 +227,10 @@ export default function KelolaFleet() {
         {selectedUnit && (
           <div className="fleet-detail-panel">
             <div className="fleet-detail-title">{selectedUnit.name}</div>
+            <div className="chip-row" style={{ margin: "6px 0 12px" }}>
+              <span className="fleet-badge">{selectedUnit.fleet_name || "Tanpa Fleet"}</span>
+              <span className="pit-badge">{selectedUnit.pit_name || "Tanpa PIT"}</span>
+            </div>
 
             <div className="field-label" style={{ marginBottom: 6 }}>Masuk PC (Fleet)</div>
             <Combobox
@@ -232,7 +252,7 @@ export default function KelolaFleet() {
 
             <button
               className="btn btn-primary"
-              style={{ marginTop: 14 }}
+              style={{ marginTop: 14, width: "auto", padding: "10px 26px" }}
               onClick={handleSaveAssign}
               disabled={savingAssign}
             >
@@ -245,59 +265,98 @@ export default function KelolaFleet() {
         )}
       </div>
 
-      <div className="card">
-        <button className="add-toggle-btn" onClick={() => setShowAddPc(!showAddPc)}>
-          <span>+ Tambah PC / Loader Baru</span>
-          <span className={"add-toggle-chevron" + (showAddPc ? " add-toggle-chevron-open" : "")}>
-            <ChevronIcon />
-          </span>
-        </button>
-        {showAddPc && (
-          <form onSubmit={handleAddFleet} className="add-form">
-            <div className="field-label" style={{ marginBottom: 6 }}>Nama PC</div>
-            <input
-              className="field-input"
-              value={newFleetName}
-              onChange={(e) => setNewFleetName(e.target.value)}
-              placeholder="Contoh: E52099"
-              style={{ marginBottom: 12 }}
-            />
-            <div className="field-label" style={{ marginBottom: 6 }}>Lokasi (PIT)</div>
-            <Combobox
-              value={newFleetPit}
-              onChange={setNewFleetPit}
-              options={pitOptions}
-              placeholder="Cari lokasi..."
-              emptyLabel="-- Tanpa lokasi dulu --"
-            />
-            <button className="auth-submit" style={{ marginTop: 12 }}>Simpan PC</button>
-          </form>
+      <div className="dash-card">
+        <div className="dash-chart-head">
+          <div className="grow">
+            <h3>Daftar Fleet</h3>
+            <div className="c-sub">unit per PC/Loader beserta lokasinya.</div>
+          </div>
+        </div>
+        <div className="rekap-tools">
+          <input className="rekap-search" value={search} onChange={function (e) { setSearch(e.target.value); }} placeholder="Cari unit / fleet / PIT..." />
+        </div>
+        {groups.map(function (g) {
+          if (q && g.members.length === 0) return null;
+          return (
+            <div key={g.fleet.id} className="fleet-group">
+              <div className="fleet-group-head" style={{ cursor: "default" }}>
+                <span className="fleet-badge">{g.fleet.name}</span>
+                <span className="pit-badge">{g.fleet.pit_name || pits.find(function (p) { return String(p.id) === String(g.fleet.pit_id); })?.name || "Tanpa PIT"}</span>
+                <span style={{ marginLeft: "auto" }}>{g.members.length} unit</span>
+              </div>
+              {g.members.length > 0 && (
+                <div className="chip-row" style={{ padding: "10px 12px" }}>
+                  {g.members.map(function (u) {
+                    return <span key={u.id} className="chip">{u.name}{u.pit_name ? " · " + u.pit_name : ""}</span>;
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {unassigned.length > 0 && (
+          <div className="fleet-group">
+            <div className="fleet-group-head" style={{ cursor: "default" }}>
+              <span className="fleet-badge" style={{ background: "var(--muted)" }}>Tanpa Fleet</span>
+              <span style={{ marginLeft: "auto" }}>{unassigned.length} unit</span>
+            </div>
+            <div className="chip-row" style={{ padding: "10px 12px" }}>
+              {unassigned.map(function (u) {
+                return <span key={u.id} className="chip">{u.name}{u.pit_name ? " · " + u.pit_name : ""}</span>;
+              })}
+            </div>
+          </div>
         )}
       </div>
 
-      <div className="card">
-        <button className="add-toggle-btn" onClick={() => setShowAddPit(!showAddPit)}>
-          <span>+ Tambah Lokasi Baru</span>
-          <span className={"add-toggle-chevron" + (showAddPit ? " add-toggle-chevron-open" : "")}>
-            <ChevronIcon />
-          </span>
-        </button>
-        {showAddPit && (
-          <form onSubmit={handleAddPit} className="add-form">
-            <input
-              className="field-input"
-              value={newPitName}
-              onChange={(e) => setNewPitName(e.target.value)}
-              placeholder="Contoh: PIT BARU"
-              style={{ marginBottom: 12 }}
-            />
-            <button className="auth-submit">Simpan Lokasi</button>
-          </form>
-        )}
-      </div>
+      <div className="two-col-cards">
+        <div className="dash-card">
+          <button className="add-toggle-btn" onClick={() => setShowAddPc(!showAddPc)}>
+            <span>+ Tambah PC / Loader</span>
+            <span className={"add-toggle-chevron" + (showAddPc ? " open" : "")}>▾</span>
+          </button>
+          {showAddPc && (
+            <form onSubmit={handleAddFleet} className="add-form">
+              <div className="field-label" style={{ marginBottom: 6 }}>Nama PC</div>
+              <input
+                className="field-input"
+                value={newFleetName}
+                onChange={(e) => setNewFleetName(e.target.value)}
+                placeholder="Contoh: E52099"
+                style={{ marginBottom: 12 }}
+              />
+              <div className="field-label" style={{ marginBottom: 6 }}>Lokasi (PIT)</div>
+              <Combobox
+                value={newFleetPit}
+                onChange={setNewFleetPit}
+                options={pitOptions}
+                placeholder="Cari lokasi..."
+                emptyLabel="-- Tanpa lokasi dulu --"
+              />
+              <button className="btn btn-primary" style={{ marginTop: 12 }}>Simpan PC</button>
+            </form>
+          )}
+        </div>
 
-      <div className="app-footer">designed by Najib.dev</div>
-      </main>
-    </div>
+        <div className="dash-card">
+          <button className="add-toggle-btn" onClick={() => setShowAddPit(!showAddPit)}>
+            <span>+ Tambah Lokasi (PIT)</span>
+            <span className={"add-toggle-chevron" + (showAddPit ? " open" : "")}>▾</span>
+          </button>
+          {showAddPit && (
+            <form onSubmit={handleAddPit} className="add-form">
+              <input
+                className="field-input"
+                value={newPitName}
+                onChange={(e) => setNewPitName(e.target.value)}
+                placeholder="Contoh: PIT BARU"
+                style={{ marginBottom: 12 }}
+              />
+              <button className="btn btn-primary">Simpan Lokasi</button>
+            </form>
+          )}
+        </div>
+      </div>
+    </AdminShell>
   );
 }
