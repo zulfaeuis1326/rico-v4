@@ -77,11 +77,21 @@ export default function Dashboard() {
     try {
       es = new EventSource("/api/realtime");
       es.onmessage = function (ev) {
-        try { const d = JSON.parse(ev.data); if (d.recap) { setRecap(d.recap); setLive(true); } } catch (e) {}
+        try {
+          const d = JSON.parse(ev.data);
+          if (d.recap) {
+            setRecap(function (prev) {
+              const n = d.recap;
+              if (prev && prev.shift && n.shift && prev.shift.id === n.shift.id && prev.grandTotal === n.grandTotal) return prev;
+              return n;
+            });
+            setLive(true);
+          }
+        } catch (e) {}
       };
       es.onerror = function () { setLive(false); };
     } catch (e) {}
-    const t = setInterval(function () { load(); loadRecap(); }, 15000);
+    const t = setInterval(function () { if (!document.hidden) { load(); loadRecap(); } }, 20000);
     return function () { clearInterval(t); try { es && es.close(); } catch (e) {} };
   }, [authUser, load, loadRecap]);
 

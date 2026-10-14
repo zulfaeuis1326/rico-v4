@@ -91,34 +91,60 @@ function HomeContent() {
     try { const r = await fetch("/api/ritasi/history"); if (r.ok) { const d = await r.json(); setHistory(d.clicks || []); } } catch (e) {}
   }, []);
 
-  // Realtime SSE + fallback polling
+  // Realtime SSE + fallback polling (hemat render & baterai):
+  // - recap hanya set state kalau total/shift BERUBAH (skip render tiap 3 detik)
+  // - history (lebih berat) refresh tiap 20 detik, bukan tiap poll
+  // - semua polling berhenti saat tab tidak aktif
+  function sameRecap(a, b) {
+    if (!a || !b) return false;
+    const sa = a.shift || {}, sb = b.shift || {};
+    return sa.id === sb.id && a.grandTotal === b.grandTotal &&
+      sb.review_status === sa.review_status &&
+      (a.units || []).length === (b.units || []).length;
+  }
   useEffect(function () {
     if (!authUser || needsSetup) return;
     let stop = false; let poll = null; let es = null;
-    async function pollOnce() {
+    async function pollRecap() {
+      if (document.hidden) return;
       try {
         const r = await fetch("/api/ritasi", { cache: "no-store" });
-        if (r.ok && !stop) setRecap(await r.json());
+        if (r.ok && !stop) {
+          const n = await r.json();
+          setRecap(function (prev) { return sameRecap(prev, n) ? prev : n; });
+        }
+      } catch (e) {}
+    }
+    async function pollHistory() {
+      if (document.hidden) return;
+      try {
         const h = await fetch("/api/ritasi/history", { cache: "no-store" });
         if (h.ok && !stop) { const d = await h.json(); setHistory(d.clicks || []); }
       } catch (e) {}
     }
-    pollOnce(); loadHistory();
+    pollRecap(); pollHistory();
     try {
       es = new EventSource("/api/realtime");
       es.onmessage = function (ev) {
         if (stop) return;
-        try { const d = JSON.parse(ev.data); if (d.recap) { setRecap(d.recap); setLive(true); } } catch (e) {}
+        try {
+          const d = JSON.parse(ev.data);
+          if (d.recap) {
+            setRecap(function (prev) { return sameRecap(prev, d.recap) ? prev : d.recap; });
+            setLive(true);
+          }
+        } catch (e) {}
       };
       es.onerror = function () {
         setLive(false);
         try { es.close(); } catch (e) {}
-        if (!poll) poll = setInterval(pollOnce, 4000);
+        if (!poll) poll = setInterval(pollRecap, 8000);
       };
-    } catch (e) { poll = setInterval(pollOnce, 4000); }
-    const slow = setInterval(function () { if (!stop && !live) pollOnce(); }, 5000);
-    return function () { stop = true; try { es && es.close(); } catch (e) {} if (poll) clearInterval(poll); clearInterval(slow); };
-  }, [authUser, needsSetup, live, loadHistory]);
+    } catch (e) { poll = setInterval(pollRecap, 8000); }
+    const slow = setInterval(function () { if (!stop && !live) pollRecap(); }, 10000);
+    const hist = setInterval(function () { if (!stop) pollHistory(); }, 20000);
+    return function () { stop = true; try { es && es.close(); } catch (e) {} if (poll) clearInterval(poll); clearInterval(slow); clearInterval(hist); };
+  }, [authUser, needsSetup, live]);
 
   useEffect(function () {
     if (!authUser || needsSetup) return;
