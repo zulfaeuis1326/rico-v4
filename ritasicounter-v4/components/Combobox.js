@@ -31,11 +31,11 @@ export default function Combobox({ value, onChange, options, placeholder, emptyL
     <div className="combo-wrap" ref={wrapRef}>
       <button
         type="button"
+        className="combo-btn"
         onClick={function () { setOpen(function (v) { return !v; }); setQ(""); }}
-        style={{ width: "100%", textAlign: "left", fontWeight: 600, background: "var(--soft)", border: "1.5px solid var(--border)", borderRadius: 12, padding: "10px 12px", cursor: "pointer", color: "var(--text)" }}
       >
         {selected ? selected.label : (<span style={{ color: "var(--muted)", fontWeight: 500 }}>{placeholder || "Pilih..."}</span>)}
-        <span style={{ float: "right", color: "var(--muted)" }}>{open ? "▲" : "▼"}</span>
+        <span className="combo-arrow">{open ? "▲" : "▼"}</span>
       </button>
       {open && (
         <div className="combo-panel">
