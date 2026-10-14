@@ -1,22 +1,57 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
-import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
+import {
+  AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
 import { atLeast } from "../lib/roles";
-import Topbar from "../components/home/Topbar";
+import { useTheme } from "../hooks/useTheme";
 
-const MAT_COLORS = { OB: "#9a6b1f", COAL: "#44403c", SOIL: "#c2701d", SOLU: "#0e7490", MUD: "#6d7c2f" };
 const TEAL = "#0f766e";
-const RUST = "#c2410c";
-const SLATE = "#78716c";
+const TEAL_LIGHT = "#5eead4";
+const AMBER = "#b45309";
+const TICK = "#8a8478";
+const GRID = "#e5ded1";
+const MAT_COLORS = { OB: "#9a6b1f", COAL: "#44403c", SOIL: "#c2701d", SOLU: "#0e7490", MUD: "#6d7c2f" };
 
-const tooltipStyle = { borderRadius: 12, border: "1px solid var(--border)", fontSize: 12 };
+function Ico({ d }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+  );
+}
+
+function Ring({ pct, color, size }) {
+  const s = size || 52;
+  const r = (s - 8) / 2;
+  const c = 2 * Math.PI * r;
+  const p = Math.max(0, Math.min(1, pct));
+  return (
+    <svg width={s} height={s} viewBox={"0 0 " + s + " " + s}>
+      <circle cx={s / 2} cy={s / 2} r={r} fill="none" strokeWidth="6" style={{ stroke: "var(--border)" }} />
+      <circle cx={s / 2} cy={s / 2} r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={c * (1 - p)} transform={"rotate(-90 " + s / 2 + " " + s / 2 + ")"} />
+    </svg>
+  );
+}
+
+function ChartTip({ active, payload, label, labelPrefix }) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div className="dash-tip">
+      <div className="t-label">{labelPrefix || ""}{label}</div>
+      <div className="t-value">{payload[0].value} rit</div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const router = useRouter();
+  const [theme, toggleTheme] = useTheme();
   const [authUser, setAuthUser] = useState(undefined);
   const [range, setRange] = useState("day");
   const [data, setData] = useState(null);
   const [recap, setRecap] = useState(null);
+  const [live, setLive] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(function () {
@@ -32,112 +67,226 @@ export default function Dashboard() {
       const r = await fetch("/api/dashboard?range=" + range);
       if (!r.ok) { setError("Gagal memuat"); return; }
       setData(await r.json()); setError(null);
-      const rc = await fetch("/api/ritasi");
-      if (rc.ok) setRecap(await rc.json());
     } catch (e) { setError(e.message); }
   }, [range]);
 
+  const loadRecap = useCallback(async function () {
+    try {
+      const rc = await fetch("/api/ritasi", { cache: "no-store" });
+      if (rc.ok) { setRecap(await rc.json()); setLive(true); }
+    } catch (e) { setLive(false); }
+  }, []);
+
   useEffect(function () {
     if (!authUser) return;
-    load();
+    load(); loadRecap();
     let es = null;
     try {
       es = new EventSource("/api/realtime");
       es.onmessage = function (ev) {
-        try { const d = JSON.parse(ev.data); if (d.recap) setRecap(d.recap); } catch (e) {}
+        try { const d = JSON.parse(ev.data); if (d.recap) { setRecap(d.recap); setLive(true); } } catch (e) {}
       };
+      es.onerror = function () { setLive(false); };
     } catch (e) {}
-    const t = setInterval(load, 15000);
+    const t = setInterval(function () { load(); loadRecap(); }, 15000);
     return function () { clearInterval(t); try { es && es.close(); } catch (e) {} };
-  }, [authUser, load]);
+  }, [authUser, load, loadRecap]);
+
+  const stats = useMemo(function () {
+    if (!data) return null;
+    const buckets = data.bucketSeries || [];
+    const last = buckets.length ? buckets[buckets.length - 1].total : 0;
+    const prev = buckets.length > 1 ? buckets[buckets.length - 2].total : 0;
+    const delta = prev > 0 ? Math.round(((last - prev) / prev) * 100) : (last > 0 ? 100 : 0);
+    const units = data.unitSeries || [];
+    const productive = units.filter(function (u) { return u.total > 0; }).length;
+    const topUnit = units.length ? units.slice().sort(function (a, b) { return b.total - a.total; })[0] : null;
+    const mats = (data.materialSeries || []).filter(function (m) { return m.total > 0; });
+    const topMat = mats.length ? mats.slice().sort(function (a, b) { return b.total - a.total; })[0] : null;
+    const hours = data.hourlySeries || [];
+    const peak = hours.length ? hours.slice().sort(function (a, b) { return b.total - a.total; })[0] : null;
+    const avg = buckets.length ? Math.round(data.grandTotal / buckets.length) : 0;
+    return { buckets, last, prev, delta, units, productive, topUnit, topMat, peak, avg };
+  }, [data]);
 
   if (authUser === undefined) return <div className="container"><div className="card"><div className="hint">Memuat...</div></div></div>;
   if (!authUser) return null;
+
+  const isAdmin = atLeast(authUser.role, "admin");
+  const canMonitor = atLeast(authUser.role, "pengawas");
+  const radarData = (data ? data.materialSeries : []).filter(function (m) { return m.total > 0; }).map(function (m) { return { m: m.name, v: m.total }; });
+  const exportHref = recap && recap.shift ? "/api/shift/export?shiftId=" + recap.shift.id : "/api/shift/export";
+
   async function logout() { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }
 
-  const topUnit = data && data.unitSeries && data.unitSeries.length ? data.unitSeries.slice().sort(function (a, b) { return b.total - a.total; })[0] : null;
-  const productive = data && data.unitSeries ? data.unitSeries.filter(function (u) { return u.total > 0; }).length : 0;
+  function RailBtn({ href, label, active, onClick, children }) {
+    if (href) return <a className={"rail-btn" + (active ? " active" : "")} href={href} title={label}>{children}</a>;
+    return <button className="rail-btn" title={label} onClick={onClick}>{children}</button>;
+  }
 
   return (
-    <div className="v4-page">
-      <Topbar authUser={authUser} canMonitorAll isAdmin={atLeast(authUser.role, "admin")} isOperator={false} onLogout={logout} currentPage="dashboard" />
-      <main className="container">
-        <div className="card hero">
-          <div className="clock" style={{ fontSize: 22, letterSpacing: "-.02em", fontFamily: "var(--disp)", fontWeight: 800 }}>Dashboard Analitik</div>
-          <div className="hero-meta">
-            <span className="hero-chip accent">Grand total <b>{data ? data.grandTotal : "-"}</b> rit</span>
-            <span className="hero-chip">Top unit <b>{topUnit ? topUnit.name + " (" + topUnit.total + ")" : "-"}</b></span>
-            <span className="hero-chip">Shift berjalan <b>{recap ? recap.grandTotal : 0}</b> rit</span>
+    <div className="v4-page" style={{ paddingLeft: 0 }}>
+      <div className="dash">
+        {/* ===== Rel ikon kiri ===== */}
+        <nav className="dash-rail">
+          <span className="rail-mark">R</span>
+          <RailBtn href="/" label={isAdmin || authUser.role === "operator" ? "Input Ritasi" : "Monitoring"}>
+            <Ico d={<><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></>} />
+          </RailBtn>
+          <RailBtn label="Dashboard" active>
+            <Ico d={<><line x1="4" y1="20" x2="20" y2="20" /><rect x="6" y="13" width="3" height="7" /><rect x="11" y="5" width="3" height="15" /><rect x="16" y="9" width="3" height="11" /></>} />
+          </RailBtn>
+          {canMonitor && (
+            <RailBtn href="/display" label="Live TV">
+              <Ico d={<><rect x="2" y="4" width="20" height="13" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></>} />
+            </RailBtn>
+          )}
+          {canMonitor && (
+            <RailBtn href="/admin/fleet" label="Kelola Fleet">
+              <Ico d={<><rect x="1" y="7" width="13" height="10" /><path d="M14 10h4l4 4v3h-8z" /><circle cx="6" cy="19" r="1.6" /><circle cx="17" cy="19" r="1.6" /></>} />
+            </RailBtn>
+          )}
+          {isAdmin && (
+            <RailBtn href="/admin/operators" label="Kelola Akun">
+              <Ico d={<><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6" /></>} />
+            </RailBtn>
+          )}
+          <span className="rail-spacer" />
+          {theme !== null && (
+            <RailBtn label="Ganti tema" onClick={toggleTheme}>
+              <span style={{ fontSize: 16 }}>{theme === "dark" ? "☀" : "☾"}</span>
+            </RailBtn>
+          )}
+          <RailBtn label="Logout" onClick={logout}>
+            <Ico d={<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>} />
+          </RailBtn>
+          <span className="rail-avatar" title={authUser.username}>{authUser.username.charAt(0).toUpperCase()}</span>
+        </nav>
+
+        {/* ===== Kolom utama ===== */}
+        <main className="dash-main">
+          <div className="dash-head">
+            <div className="grow">
+              <h1>Dashboard Analitik</h1>
+              <div className="sub">{recap && recap.shift ? recap.shift.label : "Memuat shift..."} · {authUser.username}</div>
+            </div>
+            <span className="live-pill"><span className={"live-dot" + (live ? "" : " off")} />{live ? "LIVE" : "SYNC"}</span>
           </div>
-        </div>
 
-        <div className="card">
-          <div className="seg">
-            <button className={range === "day" ? "active" : ""} onClick={function () { setRange("day"); }}>Per Hari · 7 hari</button>
-            <button className={range === "shift" ? "active" : ""} onClick={function () { setRange("shift"); }}>Per Shift · 10 shift</button>
+          {error && <div className="dash-card"><div className="hint" style={{ color: "var(--bad)" }}>Error: {error}</div></div>}
+
+          <div className="dash-kpis">
+            <div className="dash-kpi hero">
+              <div className="k-label">Total Rit Periode</div>
+              <div className="k-value">{data ? data.grandTotal : "-"}</div>
+              {stats && <span className={"k-badge " + (stats.delta < 0 ? "down" : "up")}>{stats.delta < 0 ? "▼" : "▲"} {Math.abs(stats.delta)}%</span>}
+              <div className="k-spark">
+                <ResponsiveContainer width="100%" height={56}>
+                  <AreaChart data={stats ? stats.buckets : []} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+                    <Area type="monotone" dataKey="total" stroke={TEAL_LIGHT} strokeWidth={2} fill={TEAL_LIGHT} fillOpacity={0.25} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="dash-kpi">
+              <div className="k-label">Unit Produktif</div>
+              <div className="k-value">{stats ? stats.productive : "-"}</div>
+              <div className="k-sub">dari {stats ? stats.units.length : "-"} unit terdaftar</div>
+            </div>
+            <div className="dash-kpi">
+              <div className="k-label">Rata-rata</div>
+              <div className="k-value">{stats ? stats.avg : "-"}</div>
+              <div className="k-sub">rit per {range === "day" ? "hari" : "shift"}</div>
+            </div>
+            <div className="dash-kpi">
+              <div className="k-label">Shift Berjalan</div>
+              <div className="k-value">{recap ? recap.grandTotal : "-"}</div>
+              <div className="k-sub">jam {recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "--"}</div>
+            </div>
           </div>
-        </div>
 
-        {error && <div className="card"><div className="hint" style={{ color: "var(--bad)" }}>Error: {error}</div></div>}
-
-        {data && (<>
-          <div className="kpi-grid">
-            <div className="kpi" style={{ "--kc": "#0f766e" }}><div className="kpi-label">Grand Total</div><div className="kpi-value">{data.grandTotal}</div><div className="kpi-sub">seluruh periode</div></div>
-            <div className="kpi" style={{ "--kc": "#b45309" }}><div className="kpi-label">Unit Produktif</div><div className="kpi-value">{productive}</div><div className="kpi-sub">dari {data.unitSeries ? data.unitSeries.length : 0} unit</div></div>
-            <div className="kpi" style={{ "--kc": "#15803d" }}><div className="kpi-label">Shift Berjalan</div><div className="kpi-value">{recap ? recap.grandTotal : 0}</div><div className="kpi-sub">rit shift ini</div></div>
-            <div className="kpi" style={{ "--kc": "#78716c" }}><div className="kpi-label">Rata-rata</div><div className="kpi-value">{data.bucketSeries && data.bucketSeries.length ? Math.round(data.grandTotal / data.bucketSeries.length) : 0}</div><div className="kpi-sub">rit per bucket</div></div>
-          </div>
-
-          <div className="card"><div className="section-title">Total per Bucket</div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={data.bucketSeries} margin={{ top: 6, right: 6, left: -14, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11, fill: SLATE }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: SLATE }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="total" fill={TEAL} radius={[6, 6, 2, 2]} />
-              </BarChart>
+          <div className="dash-card">
+            <div className="dash-chart-head">
+              <div className="grow">
+                <h3>Ritasi overview</h3>
+                <div className="c-sub">{range === "day" ? "7 hari terakhir" : "10 shift terakhir"}</div>
+              </div>
+              <div className="dash-tabs">
+                <button className={range === "day" ? "active" : ""} onClick={function () { setRange("day"); }}>Hari</button>
+                <button className={range === "shift" ? "active" : ""} onClick={function () { setRange("shift"); }}>Shift</button>
+              </div>
+              <a className="btn btn-secondary dash-export" href={exportHref} target="_blank" rel="noreferrer">↓ Export</a>
+            </div>
+            <ResponsiveContainer width="100%" height={290}>
+              <AreaChart data={stats ? stats.buckets : []} margin={{ top: 10, right: 10, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID} vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: TICK }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 11, fill: TICK }} axisLine={false} tickLine={false} />
+                <Tooltip content={<ChartTip />} />
+                <Area type="monotone" dataKey="total" stroke={TEAL} strokeWidth={2.5} fill={TEAL} fillOpacity={0.12} dot={false} activeDot={{ r: 4, fill: TEAL, stroke: "#fff", strokeWidth: 2 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="card"><div className="section-title">Produksi per Unit</div>
-            <ResponsiveContainer width="100%" height={Math.max(180, data.unitSeries.length * 32)}>
-              <BarChart data={data.unitSeries} layout="vertical" margin={{ left: 8, right: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11, fill: SLATE }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: SLATE }} width={80} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="total" fill="#b45309" radius={[2, 6, 6, 2]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="dash-minis">
+            <div className="dash-mini">
+              <div className="mini-top"><span className="mini-ico" style={{ background: TEAL }}>U</span><span className="mini-label">Top Unit</span></div>
+              <div className="mini-value">{stats && stats.topUnit ? stats.topUnit.name : "-"}</div>
+              <div className="mini-sub">{stats && stats.topUnit ? stats.topUnit.total + " rit" : "belum ada data"}</div>
+            </div>
+            <div className="dash-mini">
+              <div className="mini-top"><span className="mini-ico" style={{ background: stats && stats.topMat ? (MAT_COLORS[stats.topMat.name] || AMBER) : AMBER }}>M</span><span className="mini-label">Top Material</span></div>
+              <div className="mini-value">{stats && stats.topMat ? stats.topMat.name : "-"}</div>
+              <div className="mini-sub">{stats && stats.topMat ? stats.topMat.total + " rit" : "belum ada data"}</div>
+            </div>
+            <div className="dash-mini">
+              <div className="mini-top"><span className="mini-ico" style={{ background: "#44403c" }}>J</span><span className="mini-label">Jam Tersibuk</span></div>
+              <div className="mini-value">{stats && stats.peak ? String(stats.peak.hour).padStart(2, "0") + ":00" : "-"}</div>
+              <div className="mini-sub">{stats && stats.peak ? stats.peak.total + " rit" : "belum ada data"}</div>
+            </div>
+            <div className="dash-mini">
+              <div className="mini-top"><span className="mini-ico" style={{ background: AMBER }}>S</span><span className="mini-label">Status Shift</span></div>
+              <div className="mini-value" style={{ fontSize: 15 }}>{recap && recap.shift ? (recap.shift.review_status === "approved" ? "Approved" : "Berjalan") : "-"}</div>
+              <div className="mini-sub">{recap && recap.shift ? recap.shift.label : ""}</div>
+            </div>
+          </div>
+        </main>
+
+        {/* ===== Panel kanan ===== */}
+        <aside className="dash-side">
+          <div className="dash-card">
+            <div className="dash-chart-head"><div className="grow"><h3>Komposisi material</h3><div className="c-sub">periode ini</div></div></div>
+            {radarData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={225}>
+                <RadarChart data={radarData} outerRadius="72%">
+                  <PolarGrid stroke={GRID} />
+                  <PolarAngleAxis dataKey="m" tick={{ fontSize: 11, fill: TICK, fontWeight: 700 }} />
+                  <Radar dataKey="v" stroke={TEAL} strokeWidth={2} fill={TEAL} fillOpacity={0.22} dot={{ r: 3, fill: TEAL, strokeWidth: 0 }} />
+                  <Tooltip content={<ChartTip labelPrefix="Material " />} />
+                </RadarChart>
+              </ResponsiveContainer>
+            ) : <div className="hint">Belum ada data material.</div>}
           </div>
 
-          <div className="card"><div className="section-title">Komposisi Material</div>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie data={data.materialSeries.filter(function (m) { return m.total > 0; })} dataKey="total" nameKey="name" cx="50%" cy="50%" outerRadius={88} innerRadius={52} paddingAngle={2} label={function (e) { return e.name + " " + e.total; }} labelLine={false} fontSize={12}>
-                  {data.materialSeries.map(function (m) { return <Cell key={m.name} fill={MAT_COLORS[m.name] || "#888"} strokeWidth={0} />; })}
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend iconType="circle" iconSize={9} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="dash-card">
+            <div className="dash-chart-head"><div className="grow"><h3>Statistics</h3><div className="c-sub">live shift berjalan</div></div></div>
+            <div className="stat-rowline">
+              <Ring pct={stats && stats.units.length ? stats.productive / stats.units.length : 0} color={TEAL} size={52} />
+              <div className="grow"><div className="stat-name">Unit Aktif</div><div className="stat-sub">berproduksi shift ini</div></div>
+              <div><div className="stat-max">MAX {stats ? stats.units.length : "-"}</div><div className="stat-num">{stats ? stats.productive : "-"}</div></div>
+            </div>
+            <div className="stat-rowline">
+              <Ring pct={stats && stats.topMat && data.grandTotal ? stats.topMat.total / data.grandTotal : 0} color={AMBER} size={52} />
+              <div className="grow"><div className="stat-name">{stats && stats.topMat ? stats.topMat.name : "Top Material"}</div><div className="stat-sub">porsi terbesar</div></div>
+              <div><div className="stat-max">MAX {data ? data.grandTotal : "-"}</div><div className="stat-num">{stats && stats.topMat ? stats.topMat.total : "-"}</div></div>
+            </div>
+            <div className="stat-rowline">
+              <div className="grow"><div className="stat-name">Total Shift Ini</div><div className="stat-sub">semua unit + material</div></div>
+              <div className="stat-num">{recap ? recap.grandTotal : "-"} <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--font)" }}>rit</span></div>
+            </div>
           </div>
-
-          <div className="card"><div className="section-title">Tren per Jam</div>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={data.hourlySeries} margin={{ top: 6, right: 12, left: -14, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="hour" tickFormatter={function (h) { return String(h).padStart(2, "0"); }} tick={{ fontSize: 11, fill: SLATE }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: SLATE }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} labelFormatter={function (h) { return "Jam " + String(h).padStart(2, "0"); }} />
-                <Line type="monotone" dataKey="total" stroke={RUST} strokeWidth={2.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </>)}
-        <div className="app-footer">RitasiCounter V4 · designed by Najib.dev</div>
-      </main>
+        </aside>
+      </div>
     </div>
   );
 }
