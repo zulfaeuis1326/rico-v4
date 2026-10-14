@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { apiJson } from "../lib/apiClient";
+import AuthDots from "../components/AuthDots";
 
 function EyeIcon() {
   return (
@@ -46,6 +47,7 @@ export default function Login() {
 
   return (
     <div className="auth-wrap">
+      <AuthDots />
       <div className="auth-card">
         <img src="/logo.png" alt="Logo" className="auth-logo" onError={function (e) { e.target.style.display = "none"; }} />
         <div className="auth-title">RitasiCounter</div>
