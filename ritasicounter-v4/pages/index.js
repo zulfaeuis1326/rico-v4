@@ -11,11 +11,20 @@ import UnitSetupScreen from "../components/home/UnitSetupScreen";
 const MATERIALS = ["OB", "COAL", "SOIL", "SOLU", "MUD"];
 const MAT_COLOR = { OB: "#9a6b1f", COAL: "#44403c", SOIL: "#c2701d", SOLU: "#0e7490", MUD: "#6d7c2f" };
 
-function fmtCell(h) {
-  if (!h || h.total === 0) return "-";
-  const e = Object.entries(h.materials || {});
-  if (e.length === 1) return e[0][0] + " x" + e[0][1];
-  return e.map(function (x) { return x[0] + ":" + x[1]; }).join(", ");
+function Spark({ values }) {
+  const vals = values && values.length ? values : [0];
+  const max = Math.max.apply(null, vals.concat([1]));
+  const W = 120, H = 44;
+  const pts = vals.map(function (v, i) {
+    const x = vals.length === 1 ? W : (i / (vals.length - 1)) * W;
+    const y = H - 4 - (v / max) * (H - 10);
+    return x.toFixed(1) + "," + y.toFixed(1);
+  }).join(" ");
+  return (
+    <svg viewBox={"0 0 " + W + " " + H} preserveAspectRatio="none" style={{ width: "100%", height: 44, display: "block" }}>
+      <polyline points={pts} fill="none" stroke="#5eead4" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
 }
 
 export default function Home() {
@@ -172,7 +181,12 @@ function HomeContent() {
   const hourData = selRecap && selRecap.hourly ? selRecap.hourly.find(function (h) { return recap && h.jam === recap.currentHour; }) : null;
   const reviewStatus = recap && recap.shift ? (recap.shift.review_status || "pending") : "pending";
 
-  if (authUser === undefined) return <div className="container"><div className="card"><div className="hint">Memuat...</div></div></div>;
+  const hourIdx = recap && recap.hours ? recap.hours.indexOf(recap.currentHour) : -1;
+  const curHourTotal = hourIdx >= 0 && recap.grandHourlyTotals ? (recap.grandHourlyTotals[hourIdx] || 0) : 0;
+  const prevHourTotal = hourIdx > 0 && recap.grandHourlyTotals ? (recap.grandHourlyTotals[hourIdx - 1] || 0) : 0;
+  const hourDelta = prevHourTotal > 0 ? Math.round(((curHourTotal - prevHourTotal) / prevHourTotal) * 100) : (curHourTotal > 0 ? 100 : 0);
+
+  if (authUser === undefined) return <div className="container"><div className="dash-card"><div className="hint">Memuat...</div></div></div>;
   if (!authUser) return null;
   if (needsSetup) {
     return (<UnitSetupScreen authUser={authUser} setupUnits={setupUnits.length ? setupUnits : units} settingUnit={false}
@@ -181,6 +195,143 @@ function HomeContent() {
         if (r.ok) window.location.reload(); else toast("Gagal pilih unit", "error");
       }} onRegisterOwnUnit={function (e) { e.preventDefault(); }} onLogout={handleLogout} />);
   }
+
+  const inputPanel = canClick && (
+    <section className="dash-card">
+      <h3>Klik Ritasi</h3>
+      <div className="c-sub">{isAdmin ? "Pilih unit, material, lalu klik." : "Unit terkunci — pilih material, lalu klik."}</div>
+      <div className="field-label" style={{ margin: "12px 0 6px" }}>Unit</div>
+      {isAdmin ? (
+        <Combobox value={selectedUnit} onChange={setSelectedUnit} options={units.map(function (u) { return { value: String(u.id), label: u.name }; })} placeholder="Cari unit..." />
+      ) : (
+        <div className="hint" style={{ fontSize: 15, color: "var(--text)", marginBottom: 4 }}>Unit kamu: <b>{authUser.unit_name}</b> (terkunci)</div>
+      )}
+      <div className="field-label" style={{ margin: "12px 0 4px" }}>Material (+1 rit)</div>
+      <div className="mat-grid">
+        {MATERIALS.map(function (m) {
+          const c = selRecap && selRecap.materialTotals ? (selRecap.materialTotals[m] || 0) : 0;
+          return (<button key={m} className={"mat-btn" + (material === m ? " active" : "")} style={{ "--mc": MAT_COLOR[m] }} onClick={function () { setMaterial(m); }}>
+            <span className="mat-btn-name"><span className="mat-dot" />{m}</span>
+            <span className="mat-btn-cnt">{c} rit</span>
+          </button>);
+        })}
+      </div>
+      <div className="ritasi-jam-row">
+        <div><div className="field-label">Jam Ritasi</div>
+          <div className="hint">{selectedJam === "" ? "Sekarang (" + (recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "-") + ")" : String(selectedJam).padStart(2, "0") + ":00 (manual)"}</div>
+        </div>
+        <button className="btn btn-secondary" style={{ width: "auto", padding: "0 14px" }} onClick={function () { setJamOpen(true); }}>Ubah</button>
+      </div>
+      <button className="big-click-btn" style={{ marginTop: 14 }} disabled={!selectedUnit || !material || loadingClick} onClick={handleClick}>
+        {loadingClick ? "..." : "+ RITASI"}
+      </button>
+      <div className="stat-rowline" style={{ marginTop: 12 }}><span className="stat-name" style={{ fontWeight: 600 }}>Rit jam ini</span><span className="grow" /><b className="stat-num" style={{ fontSize: 16 }}>{hourData ? hourData.total : 0}</b></div>
+      <div className="stat-rowline"><span className="stat-name" style={{ fontWeight: 600 }}>Total shift (unit ini)</span><span className="grow" /><b className="stat-num" style={{ fontSize: 16 }}>{selRecap ? selRecap.total : 0}</b></div>
+    </section>
+  );
+
+  const monitorCol = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+      {canMonitor && (
+        <section className="dash-card">
+          <div className="dash-chart-head">
+            <div className="grow">
+              <h3>Rekap per Fleet</h3>
+              <div className="c-sub">{filtered.length} unit · shift berjalan</div>
+            </div>
+            <button className="btn btn-secondary dash-export" onClick={function () { if (recap && recap.shift) window.open("/api/shift/export?shiftId=" + recap.shift.id, "_blank"); }}>↓ Export</button>
+          </div>
+          <div className="rekap-tools">
+            <input className="rekap-search" value={search} onChange={function (e) { setSearch(e.target.value); }} placeholder="Cari unit / fleet / PIT..." />
+            <select value={pitFilter} onChange={function (e) { setPitFilter(e.target.value); }} style={{ width: "auto", minWidth: 130 }}>
+              <option value="">Semua PIT</option>
+              {Array.from(new Set(allUnits.map(function (u) { return u.pit_name || "Tanpa PIT"; }))).map(function (p) {
+                return <option key={p} value={p}>{p}</option>;
+              })}
+            </select>
+            <label className="rekap-toggle"><input type="checkbox" checked={!showAll} onChange={function (e) { setShowAll(!e.target.checked); }} />Hanya ada ritasi</label>
+          </div>
+          {fleetGroups.map(function (g) {
+            const col = !!collapsedFleet[g.name];
+            return (
+              <div key={g.name} className="fleet-group">
+                <div className="fleet-group-head" onClick={function () { setCollapsedFleet(function (p) { const n = Object.assign({}, p); n[g.name] = !n[g.name]; return n; }); }}>
+                  <span className="fleet-badge">{g.name}</span>
+                  <span className="pit-badge">{g.pit}</span>
+                  <span style={{ marginLeft: "auto" }}>{g.total} rit · {g.units.length} unit {col ? "▸" : "▾"}</span>
+                </div>
+                {!col && (
+                  <div className="table-scroll" style={{ border: "none", borderTop: "1px solid var(--border)", borderRadius: 0 }}>
+                    <table><thead><tr><th>Unit</th>{MATERIALS.map(function (m) { return <th key={m}>{m}</th>; })}<th>Total</th></tr></thead>
+                      <tbody>{g.units.map(function (u) {
+                        return (<tr key={u.id}><td>{u.name}</td>{MATERIALS.map(function (m) { return <td key={m}>{(u.materialTotals && u.materialTotals[m]) || 0}</td>; })}<td><b>{u.total}</b></td></tr>);
+                      })}</tbody></table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {fleetGroups.length === 0 && <div className="hint">Belum ada ritasi di shift ini.</div>}
+          <div className="table-scroll" style={{ marginTop: 12 }}>
+            <table><thead><tr><th>Jam</th>{recap && recap.hours ? recap.hours.map(function (h) { return <th key={h} className={h === recap.currentHour ? "current-hour" : ""}>{String(h).padStart(2, "0")}</th>; }) : null}<th>Total</th></tr></thead>
+              <tbody><tr className="total-row"><td>TOTAL</td>{recap && recap.grandHourlyTotals ? recap.grandHourlyTotals.map(function (v, i) { return <td key={i} className={recap.hours[i] === recap.currentHour ? "current-hour" : ""}>{v}</td>; }) : null}<td>{recap ? recap.grandTotal : 0}</td></tr></tbody></table>
+          </div>
+        </section>
+      )}
+
+      {canMonitor && (
+        <section className="dash-card">
+          <h3>Shift & Approval</h3>
+          <div className="c-sub">Approval pengawas bersifat stempel resmi — data tetap masuk rekap walau belum di-approve.</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+            {reviewStatus === "approved"
+              ? <button className="btn btn-secondary" style={{ width: "auto" }} onClick={function () { handleApprove(false); }}>Batalkan Approval</button>
+              : <button className="btn btn-primary" style={{ width: "auto" }} onClick={function () { handleApprove(true); }}>Approve Shift Ini</button>}
+            <button className="btn btn-danger" style={{ width: "auto" }} onClick={handleCloseShift}>Tutup Shift</button>
+          </div>
+          {pastShifts.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div className="field-label" style={{ marginBottom: 6 }}>Riwayat Shift</div>
+              {pastShifts.slice(0, 8).map(function (s) {
+                return (<div key={s.id} className="history-row" style={{ marginBottom: 6 }}>
+                  <span>{s.label} {s.review_status === "approved" ? "✓" : ""}</span>
+                  <span style={{ display: "flex", gap: 6 }}>
+                    <a className="btn-mini-link" href={"/api/shift/export?shiftId=" + s.id} target="_blank" rel="noreferrer">Export</a>
+                    {isAdmin && <button className="btn-mini-danger" onClick={async function () {
+                      if (!confirm("Hapus shift " + s.label + "?")) return;
+                      const r = await fetch("/api/shift/delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shiftId: s.id }) });
+                      if (r.ok) { setPastShifts(pastShifts.filter(function (x) { return x.id !== s.id; })); toast("Shift dihapus", "success"); }
+                    }}>Hapus</button>}
+                  </span>
+                </div>);
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="dash-card">
+        <h3>Riwayat ({history.length})</h3>
+        <div className="c-sub">entri terbaru shift ini.</div>
+        {history.length === 0 && <div className="hint">Belum ada ritasi.</div>}
+        <div className="history-list-scroll" style={{ marginTop: history.length ? 10 : 0 }}>
+          {history.slice(0, 60).map(function (h) {
+            return (<div key={h.id} className="history-row">
+              <div className="history-info"><b>{h.unit_name}</b> · {h.material} · jam {String(h.jam).padStart(2, "0")}:00
+                <span className="history-meta"> — {h.operator_name || "-"}, {new Date(h.clicked_at).toLocaleTimeString("id-ID")}</span></div>
+              {(isAdmin || h.operator_id === authUser.id) && (
+                <button className="btn-mini-danger" onClick={async function () {
+                  if (!confirm("Hapus entri ini?")) return;
+                  const r = await fetch("/api/ritasi/history", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: h.id }) });
+                  if (r.ok) { const d = await r.json(); if (d.recap) setRecap(d.recap); loadHistory(); }
+                }}>Hapus</button>
+              )}
+            </div>);
+          })}
+        </div>
+      </section>
+    </div>
+  );
 
   return (
     <div className="v4-page" style={{ paddingLeft: 0 }}>
@@ -194,155 +345,57 @@ function HomeContent() {
             </div>
             <span className="live-pill"><span className={"live-dot" + (live ? "" : " off")} />{live ? "LIVE" : "SYNC"}</span>
           </div>
-        <div className="dash-card hero">
-          <div className="shift-banner">
-            <div className="grow">
-              <div style={{ fontSize: 11.5, opacity: .75, fontWeight: 800, letterSpacing: ".09em" }}>SHIFT BERJALAN · JAM {recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "--"}</div>
-              <div className="clock" style={{ fontSize: 24 }}>{recap && recap.shift ? recap.shift.label : "Memuat shift..."}</div>
-              <div style={{ fontSize: 12.5, opacity: .75 }}>Jam aktif: {recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "-"} · {recap ? recap.tzInfo : ""}</div>
+
+          <div className="dash-card hero">
+            <div className="dash-chart-head">
+              <div className="grow">
+                <h3 style={{ fontSize: 19 }}>{recap && recap.shift ? recap.shift.label : "Memuat shift..."}</h3>
+                <div className="c-sub">shift berjalan · jam {recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "--"}</div>
+              </div>
+              <span className={"approve-pill " + reviewStatus}>{reviewStatus === "approved" ? "Approved" : "Pending review"}</span>
             </div>
-            <span className={"approve-pill " + reviewStatus}>{reviewStatus === "approved" ? "Approved" : "Pending review"}</span>
+            <div className="hero-meta">
+              <span className="hero-chip accent">Jam <b>{recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "--"}</b> · <b>{curHourTotal}</b> rit</span>
+              <span className="hero-chip"><b>{filtered.length}</b> unit aktif</span>
+              <span className="hero-chip">{recap ? recap.tzInfo : ""}</span>
+            </div>
           </div>
-        </div>
 
-        {canMonitor && (
-          <div className="kpi-grid">
-            <div className="kpi" style={{ "--kc": "#0f766e" }}><div className="kpi-label">Total Rit Shift</div><div className="kpi-value">{recap ? recap.grandTotal : 0}</div><div className="kpi-sub">{filtered.length} unit aktif berproduksi</div></div>
-            <div className="kpi" style={{ "--kc": "#b45309" }}><div className="kpi-label">Jam Berjalan</div><div className="kpi-value">{recap ? String(recap.currentHour).padStart(2, "0") : "--"}</div><div className="kpi-sub">{recap && recap.grandHourlyTotals && recap.hours ? (recap.grandHourlyTotals[recap.hours.indexOf(recap.currentHour)] || 0) + " rit jam ini" : ""}</div></div>
-            <div className="kpi" style={{ "--kc": "#15803d" }}><div className="kpi-label">Fleet Aktif</div><div className="kpi-value">{fleetGroups.length}</div><div className="kpi-sub">{fleets.length} fleet terdaftar</div></div>
-            <div className="kpi" style={{ "--kc": "#57534e" }}><div className="kpi-label">Top Material</div><div className="kpi-value" style={{ fontSize: 22 }}>{topMat(recap)}</div><div className="kpi-sub">komposisi shift ini</div></div>
-          </div>
-        )}
-
-        <div className="v4-grid">
-          {canClick && (
-            <section className="dash-card">
-              <h2 className="sec-title-icon">Klik Ritasi</h2>
-              <div className="field-label" style={{ marginBottom: 6 }}>Unit</div>
-              {isAdmin ? (
-                <Combobox value={selectedUnit} onChange={setSelectedUnit} options={units.map(function (u) { return { value: String(u.id), label: u.name }; })} placeholder="Cari unit..." />
-              ) : (
-                <div className="hint" style={{ fontSize: 15, color: "var(--text)", marginBottom: 8 }}>Unit kamu: <b>{authUser.unit_name}</b> (terkunci)</div>
-              )}
-              <div className="field-label" style={{ margin: "12px 0 4px" }}>Material (+1 rit)</div>
-              <div className="mat-grid">
-                {MATERIALS.map(function (m) {
-                  const c = selRecap && selRecap.materialTotals ? (selRecap.materialTotals[m] || 0) : 0;
-                  return (<button key={m} className={"mat-btn" + (material === m ? " active" : "")} style={{ "--mc": MAT_COLOR[m] }} onClick={function () { setMaterial(m); }}>
-                    <span className="mat-btn-name"><span className="mat-dot" />{m}</span>
-                    <span className="mat-btn-cnt">{c} rit</span>
-                  </button>);
-                })}
+          {canMonitor && (
+            <div className="dash-kpis">
+              <div className="dash-kpi hero">
+                <div className="k-label">Total Rit Shift</div>
+                <div className="k-value">{recap ? recap.grandTotal : 0}</div>
+                <span className={"k-badge " + (hourDelta < 0 ? "down" : "up")}>{hourDelta < 0 ? "▼" : "▲"} {Math.abs(hourDelta)}%</span>
+                <div className="k-spark"><Spark values={recap ? recap.grandHourlyTotals : []} /></div>
               </div>
-              <div className="ritasi-jam-row">
-                <div><div className="field-label">Jam Ritasi</div>
-                  <div className="hint">{selectedJam === "" ? "Sekarang (" + (recap ? String(recap.currentHour).padStart(2, "0") + ":00" : "-") + ")" : String(selectedJam).padStart(2, "0") + ":00 (manual)"}</div>
-                </div>
-                <button className="btn btn-secondary" style={{ width: "auto", padding: "0 14px" }} onClick={function () { setJamOpen(true); }}>Ubah</button>
+              <div className="dash-kpi">
+                <div className="k-label">Jam Berjalan</div>
+                <div className="k-value">{recap ? String(recap.currentHour).padStart(2, "0") : "--"}</div>
+                <div className="k-sub">{curHourTotal} rit jam ini</div>
               </div>
-              <button className="big-click-btn" style={{ marginTop: 14 }} disabled={!selectedUnit || !material || loadingClick} onClick={handleClick}>
-                {loadingClick ? "..." : "+ RITASI"}
-              </button>
-              <div className="stat-row" style={{ marginTop: 12 }}><span>Rit jam ini</span><b>{hourData ? hourData.total : 0}</b></div>
-              <div className="stat-row"><span>Total shift (unit ini)</span><b>{selRecap ? selRecap.total : 0}</b></div>
-            </section>
+              <div className="dash-kpi">
+                <div className="k-label">Fleet Aktif</div>
+                <div className="k-value">{fleetGroups.length}</div>
+                <div className="k-sub">{fleets.length} fleet terdaftar</div>
+              </div>
+              <div className="dash-kpi">
+                <div className="k-label">Top Material</div>
+                <div className="k-value" style={{ fontSize: 22 }}>{topMat(recap)}</div>
+                <div className="k-sub">komposisi shift ini</div>
+              </div>
+            </div>
           )}
 
-          <div>
-            {canMonitor && (
-              <section className="dash-card">
-                <h2 className="sec-title-icon">Rekap per Fleet ({filtered.length} unit)</h2>
-                <div className="rekap-tools">
-                  <input className="rekap-search" value={search} onChange={function (e) { setSearch(e.target.value); }} placeholder="Cari unit / fleet / PIT..." />
-                  <select value={pitFilter} onChange={function (e) { setPitFilter(e.target.value); }} style={{ width: "auto", minWidth: 130 }}>
-                    <option value="">Semua PIT</option>
-                    {Array.from(new Set(allUnits.map(function (u) { return u.pit_name || "Tanpa PIT"; }))).map(function (p) {
-                      return <option key={p} value={p}>{p}</option>;
-                    })}
-                  </select>
-                  <label className="rekap-toggle"><input type="checkbox" checked={!showAll} onChange={function (e) { setShowAll(!e.target.checked); }} />Hanya ada ritasi</label>
-                  <button className="btn btn-secondary rekap-export-btn" onClick={function () { if (recap && recap.shift) window.open("/api/shift/export?shiftId=" + recap.shift.id, "_blank"); }}>Export</button>
-                </div>
-                {fleetGroups.map(function (g) {
-                  const col = !!collapsedFleet[g.name];
-                  return (
-                    <div key={g.name} className="fleet-group">
-                      <div className="fleet-group-head" onClick={function () { setCollapsedFleet(function (p) { const n = Object.assign({}, p); n[g.name] = !n[g.name]; return n; }); }}>
-                        <span className="fleet-badge">{g.name}</span>
-                        <span className="pit-badge">{g.pit}</span>
-                        <span style={{ marginLeft: "auto" }}>{g.total} rit · {g.units.length} unit {col ? "▸" : "▾"}</span>
-                      </div>
-                      {!col && (
-                        <div className="table-scroll" style={{ border: "none", borderTop: "1px solid var(--border)", borderRadius: 0 }}>
-                          <table><thead><tr><th>Unit</th>{MATERIALS.map(function (m) { return <th key={m}>{m}</th>; })}<th>Total</th></tr></thead>
-                            <tbody>{g.units.map(function (u) {
-                              return (<tr key={u.id}><td>{u.name}</td>{MATERIALS.map(function (m) { return <td key={m}>{(u.materialTotals && u.materialTotals[m]) || 0}</td>; })}<td><b>{u.total}</b></td></tr>);
-                            })}</tbody></table>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {fleetGroups.length === 0 && <div className="hint">Belum ada ritasi di shift ini.</div>}
-                <div className="table-scroll" style={{ marginTop: 12 }}>
-                  <table><thead><tr><th>Jam</th>{recap && recap.hours ? recap.hours.map(function (h) { return <th key={h} className={h === recap.currentHour ? "current-hour" : ""}>{String(h).padStart(2, "0")}</th>; }) : null}<th>Total</th></tr></thead>
-                    <tbody><tr className="total-row"><td>TOTAL</td>{recap && recap.grandHourlyTotals ? recap.grandHourlyTotals.map(function (v, i) { return <td key={i} className={recap.hours[i] === recap.currentHour ? "current-hour" : ""}>{v}</td>; }) : null}<td>{recap ? recap.grandTotal : 0}</td></tr></tbody></table>
-                </div>
-              </section>
-            )}
+          {canClick ? (
+            <div className="v4-grid">
+              {inputPanel}
+              {monitorCol}
+            </div>
+          ) : (
+            monitorCol
+          )}
 
-            {canMonitor && (
-              <section className="dash-card">
-                <h2 className="sec-title-icon">Shift & Approval</h2>
-                <div className="hint" style={{ marginBottom: 10 }}>Approval pengawas bersifat stempel resmi — data tetap masuk rekap walau belum di-approve.</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {reviewStatus === "approved"
-                    ? <button className="btn btn-secondary" style={{ width: "auto" }} onClick={function () { handleApprove(false); }}>Batalkan Approval</button>
-                    : <button className="btn btn-primary" style={{ width: "auto" }} onClick={function () { handleApprove(true); }}>Approve Shift Ini</button>}
-                  <button className="btn btn-danger" style={{ width: "auto" }} onClick={handleCloseShift}>Tutup Shift</button>
-                </div>
-                {pastShifts.length > 0 && (
-                  <div style={{ marginTop: 12 }}>
-                    <div className="field-label" style={{ marginBottom: 6 }}>Riwayat Shift</div>
-                    {pastShifts.slice(0, 8).map(function (s) {
-                      return (<div key={s.id} className="history-row" style={{ marginBottom: 6 }}>
-                        <span>{s.label} {s.review_status === "approved" ? "✓" : ""}</span>
-                        <span style={{ display: "flex", gap: 6 }}>
-                          <a className="btn-mini-link" href={"/api/shift/export?shiftId=" + s.id} target="_blank" rel="noreferrer">Export</a>
-                          {isAdmin && <button className="btn-mini-danger" onClick={async function () {
-                            if (!confirm("Hapus shift " + s.label + "?")) return;
-                            const r = await fetch("/api/shift/delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shiftId: s.id }) });
-                            if (r.ok) { setPastShifts(pastShifts.filter(function (x) { return x.id !== s.id; })); toast("Shift dihapus", "success"); }
-                          }}>Hapus</button>}
-                        </span>
-                      </div>);
-                    })}
-                  </div>
-                )}
-              </section>
-            )}
-
-            <section className="dash-card">
-              <h2 className="sec-title-icon">Riwayat ({history.length})</h2>
-              {history.length === 0 && <div className="hint">Belum ada ritasi.</div>}
-              <div className="history-list-scroll">
-                {history.slice(0, 60).map(function (h) {
-                  return (<div key={h.id} className="history-row">
-                    <div className="history-info"><b>{h.unit_name}</b> · {h.material} · jam {String(h.jam).padStart(2, "0")}:00
-                      <span className="history-meta"> — {h.operator_name || "-"}, {new Date(h.clicked_at).toLocaleTimeString("id-ID")}</span></div>
-                    {(isAdmin || h.operator_id === authUser.id) && (
-                      <button className="btn-mini-danger" onClick={async function () {
-                        if (!confirm("Hapus entri ini?")) return;
-                        const r = await fetch("/api/ritasi/history", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: h.id }) });
-                        if (r.ok) { const d = await r.json(); if (d.recap) setRecap(d.recap); loadHistory(); }
-                      }}>Hapus</button>
-                    )}
-                  </div>);
-                })}
-              </div>
-            </section>
-          </div>
-        </div>
           <div className="app-footer">RitasiCounter V4 · realtime SSE · designed by Najib.dev</div>
         </main>
       </div>

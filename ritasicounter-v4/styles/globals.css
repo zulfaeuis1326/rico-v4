@@ -5,7 +5,9 @@
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
 .v4-page{min-height:100vh;display:flex;flex-direction:column}
 .container{width:100%;max-width:1180px;margin:0 auto;padding:18px 16px 90px}
-.v4-grid{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
+.v4-grid{display:grid;grid-template-columns:380px minmax(0,1fr);gap:14px;align-items:start}
+.v4-grid>*{min-width:0}
+.grow{flex:1;min-width:0}
 @media(max-width:960px){.v4-grid{grid-template-columns:1fr}.container{max-width:920px}}
 .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)}
 .topbar-logo{display:flex;align-items:center;gap:10px;font-family:var(--disp);font-weight:700;font-size:17px}
