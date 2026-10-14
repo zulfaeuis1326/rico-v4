@@ -3,7 +3,8 @@
 [data-theme="dark"]{--bg:#0c0a09;--card:#161311;--soft:#1e1a17;--text:#f5f4f2;--muted:#a8a29e;--border:#2b2622;--accent:#2dd4bf;--accent2:#f59e0b;--aso:rgba(45,212,191,.12);--sh:0 14px 34px -16px rgba(0,0,0,.65)}
 *{box-sizing:border-box}html,body{margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
-.v4-page{min-height:100vh;display:flex;flex-direction:column}
+.v4-page{min-height:100vh;display:flex;flex-direction:column;padding-left:76px;}
+@media(max-width:720px){.v4-page{padding-left:0;}}
 .container{width:100%;max-width:1180px;margin:0 auto;padding:18px 16px 90px}
 .v4-grid{display:grid;grid-template-columns:380px minmax(0,1fr);gap:14px;align-items:start}
 .v4-grid>*{min-width:0}
@@ -181,8 +182,8 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;fo
 .auth-wrap ~ .app-footer{font-size:12px;letter-spacing:.02em;}
 
 /* ===== Dashboard ala referensi: rail + KPI + overview + panel ===== */
-.dash{display:grid;grid-template-columns:64px minmax(0,1fr) 300px;gap:16px;max-width:1300px;margin:0 auto;padding:18px 16px 70px;align-items:start;}
-.dash-rail{position:sticky;top:16px;background:var(--card);border:1px solid var(--border);border-radius:20px;box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:4px;min-height:calc(100vh - 32px);}
+.dash{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;max-width:1300px;margin:0 auto;padding:18px 16px 70px;align-items:start;width:100%;}
+.dash-rail{position:fixed;left:0;top:0;bottom:0;width:76px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:4px;z-index:60;}
 .dash-rail .rail-mark{width:38px;height:38px;border-radius:12px;background:#1c1917;color:#f5f4f2;display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:18px;margin-bottom:12px;position:relative;overflow:hidden;}
 .dash-rail .rail-mark img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 [data-theme="dark"] .dash-rail .rail-mark{background:var(--accent);color:#0c0a09;}
@@ -236,11 +237,11 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;fo
 .dash-tip{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh);padding:9px 12px;font-size:12px;}
 .dash-tip .t-label{color:var(--muted);font-weight:600;margin-bottom:2px;}
 .dash-tip .t-value{font-family:var(--disp);font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;}
-@media(max-width:1100px){.dash{grid-template-columns:60px minmax(0,1fr);}.dash-side{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-items:start;}.dash-kpis{grid-template-columns:1fr 1fr;}.dash-minis{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:720px){.dash{grid-template-columns:1fr;padding:12px 12px 70px;}.dash-rail{position:static;flex-direction:row;min-height:0;padding:8px 10px;order:-1;}.dash-rail .rail-mark{margin:0 6px 0 0;}.rail-spacer{flex:1;}.dash-side{grid-template-columns:1fr;}.dash-kpis{grid-template-columns:1fr 1fr;}.dash-minis{grid-template-columns:1fr 1fr;}}
+@media(max-width:1100px){.dash{grid-template-columns:minmax(0,1fr);}.dash-side{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-items:start;}.dash-kpis{grid-template-columns:1fr 1fr;}.dash-minis{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:720px){.dash{grid-template-columns:1fr;padding:12px 12px 70px;}.dash-rail{position:sticky;top:0;left:0;right:0;width:auto;border-right:none;border-bottom:1px solid var(--border);flex-direction:row;min-height:0;padding:8px 10px;order:-1;}.dash-rail .rail-mark{margin:0 6px 0 0;}.rail-spacer{flex:1;}.dash-side{grid-template-columns:1fr;}.dash-kpis{grid-template-columns:1fr 1fr;}.dash-minis{grid-template-columns:1fr 1fr;}}
 
 /* ===== Halaman admin (serasi dashboard) ===== */
-.dash.admin{grid-template-columns:64px minmax(0,1fr);}
+.dash.admin{grid-template-columns:minmax(0,1fr);}
 @media(max-width:720px){.dash.admin{grid-template-columns:1fr;}}
 .user-card{display:flex;gap:12px;align-items:flex-start;background:var(--soft);border:1px solid var(--border);border-radius:14px;padding:12px 13px;}
 .u-avatar{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:16px;color:#fff;flex-shrink:0;}
