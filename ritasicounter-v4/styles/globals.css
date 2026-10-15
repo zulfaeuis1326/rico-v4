@@ -185,6 +185,47 @@ td{padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;fo
 .auth-wrap + .app-footer, .auth-wrap .app-footer{position:relative;}
 .auth-wrap ~ .app-footer{font-size:12px;letter-spacing:.02em;}
 
+/* ===== Login split elegan: panel brand solid + form bersih, tanpa gradien ===== */
+.auth-split{min-height:100vh;display:grid;grid-template-columns:minmax(340px,440px) 1fr;background:var(--bg);}
+.auth-side{background:#0c2b27;color:#eef4f1;padding:46px 42px;display:flex;flex-direction:column;gap:0;position:relative;overflow:hidden;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.5px);background-size:22px 22px;}
+.auth-side-brand{display:flex;align-items:center;gap:12px;margin-bottom:56px;}
+.auth-side-brand img{width:42px;height:42px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,.08);padding:4px;}
+.auth-side-brand span{font-family:Archivo,Inter,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em;}
+.auth-side-brand em{font-style:normal;color:#5eead4;}
+.auth-side h1{font-family:Archivo,Inter,sans-serif;font-weight:800;font-size:34px;line-height:1.16;letter-spacing:-.025em;margin:0 0 14px;max-width:12ch;}
+.auth-side>p{font-size:14.5px;line-height:1.7;color:#b9cdc7;margin:0 0 40px;max-width:38ch;}
+.auth-side-points{list-style:none;margin:0 0 40px;padding:22px 0 0;border-top:1px solid rgba(255,255,255,.14);display:flex;flex-direction:column;gap:18px;}
+.auth-side-points li{display:grid;grid-template-columns:14px 1fr;gap:4px 12px;align-items:start;}
+.auth-side-points li::before{content:"";width:8px;height:8px;margin-top:5px;background:#5eead4;}
+.auth-side-points b{display:block;font-size:13.5px;font-weight:700;}
+.auth-side-points span{font-size:12.5px;color:#9db8b1;}
+.auth-side-foot{margin-top:auto;font-size:12px;color:#7d9891;letter-spacing:.02em;}
+.auth-main{display:grid;place-items:center;padding:40px 24px;}
+.auth-form-card{width:100%;max-width:400px;}
+.auth-form-card h2{font-family:Archivo,Inter,sans-serif;font-weight:800;font-size:27px;letter-spacing:-.022em;margin:0 0 6px;color:var(--text);}
+.auth-form-sub{font-size:13.5px;color:var(--muted);margin:0 0 24px;line-height:1.6;}
+.auth-form-card .field-group{margin-bottom:15px;text-align:left;}
+.auth-form-card .field-label{display:block;text-align:left;font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+.auth-form-card .field-input{margin-top:7px;padding:12px 14px;font-size:14.5px;border-radius:11px;}
+.auth-form-card .field-error{font-size:13px;line-height:1.55;border-radius:10px;text-align:left;margin:14px 0 0;}
+.auth-form-card .auth-submit{width:100%;margin-top:16px;border:none;border-radius:11px;padding:13px;font-family:Archivo,Inter,sans-serif;font-weight:700;font-size:15px;cursor:pointer;background:#0f766e;color:#fff;transition:background .15s ease;}
+.auth-form-card .auth-submit:hover:not(:disabled){background:#0b5f59;}
+.auth-form-card .auth-submit:disabled{opacity:.6;cursor:not-allowed;}
+[data-theme="dark"] .auth-form-card .auth-submit{background:#2dd4bf;color:#062a26;}
+[data-theme="dark"] .auth-form-card .auth-submit:hover:not(:disabled){background:#5eead4;}
+.auth-form-card .auth-switch{margin-top:20px;font-size:13px;color:var(--muted);text-align:center;}
+.auth-form-card .auth-switch a{color:var(--accent);font-weight:700;text-decoration:none;}
+.auth-form-card .auth-switch a:hover{text-decoration:underline;}
+@media(max-width:860px){
+  .auth-split{grid-template-columns:1fr;}
+  .auth-side{padding:28px 24px;background-size:18px 18px;}
+  .auth-side-brand{margin-bottom:22px;}
+  .auth-side h1{font-size:25px;}
+  .auth-side>p{margin-bottom:0;}
+  .auth-side-points,.auth-side-foot{display:none;}
+  .auth-main{padding:28px 20px 48px;}
+}
+
 /* ===== Dashboard ala referensi: rail + KPI + overview + panel ===== */
 .dash{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;max-width:1300px;margin:0 auto;padding:18px 16px 70px;align-items:start;width:100%;}
 .dash-rail{position:fixed;left:0;top:0;bottom:0;width:76px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:4px;z-index:60;}
