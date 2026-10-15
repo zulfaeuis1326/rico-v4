@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { apiJson } from "../lib/apiClient";
+import AuthDots from "../components/AuthDots";
 
 function EyeIcon() {
   return (
@@ -45,77 +46,63 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-split">
-      <aside className="auth-side">
-        <div className="auth-side-brand">
-          <img src="/logo.png" alt="Logo perusahaan" onError={function (e) { e.target.style.display = "none"; }} />
-          <span>RitasiCounter <em>V4</em></span>
-        </div>
-        <h1>Pencatatan ritasi tambang, realtime.</h1>
-        <p>Input per unit dan material, rekap per fleet dan PIT, approval shift, dan dashboard analitik — dalam satu aplikasi.</p>
-        <ul className="auth-side-points">
-          <li><b>Realtime SSE</b><span>data mengalir otomatis</span></li>
-          <li><b>Fleet & PIT</b><span>struktur sesuai lapangan</span></li>
-          <li><b>Export Excel</b><span>laporan siap share</span></li>
-        </ul>
-        <div className="auth-side-foot">designed by Najib.dev</div>
-      </aside>
+    <div className="auth-wrap">
+      <AuthDots />
+      <div className="auth-card">
+        <img src="/logo.png" alt="Logo perusahaan" className="auth-logo" onError={function (e) { e.target.style.display = "none"; }} />
+        <div className="auth-title">RitasiCounter</div>
+        <div className="auth-subtitle">Masuk ke akun kamu</div>
 
-      <main className="auth-main">
-        <div className="auth-form-card">
-          <h2>Selamat datang kembali</h2>
-          <p className="auth-form-sub">Masuk ke akun kamu untuk mulai bekerja.</p>
-
-          <form onSubmit={handleSubmit}>
-            <div className="field-group">
-              <label className="field-label" htmlFor="username">Username</label>
-              <input
-                id="username"
-                className="field-input"
-                value={username}
-                onChange={function (e) { setUsername(e.target.value); }}
-                autoCapitalize="none"
-                autoComplete="username"
-                placeholder="cth. operator01"
-              />
-            </div>
-
-            <div className="field-group">
-              <label className="field-label" htmlFor="password">Password</label>
-              <div className="field-password-wrap">
-                <input
-                  id="password"
-                  className="field-input"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={function (e) { setPassword(e.target.value); }}
-                  autoComplete="current-password"
-                  placeholder="Password kamu"
-                />
-                <button
-                  type="button"
-                  className="field-password-toggle"
-                  onClick={function () { setShowPassword(!showPassword); }}
-                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </div>
-            </div>
-
-            {error && <div className="field-error" role="alert">{error}</div>}
-
-            <button className="auth-submit" disabled={loading}>
-              {loading ? "Memproses..." : "Masuk"}
-            </button>
-          </form>
-
-          <div className="auth-switch">
-            Belum punya akun? <a href="/register">Daftar di sini</a>
+        <form onSubmit={handleSubmit}>
+          <div className="field-group">
+            <label className="field-label" htmlFor="username">Username</label>
+            <input
+              id="username"
+              className="field-input"
+              value={username}
+              onChange={function (e) { setUsername(e.target.value); }}
+              autoCapitalize="none"
+              autoComplete="username"
+              placeholder="cth. operator01"
+            />
           </div>
+
+          <div className="field-group">
+            <label className="field-label" htmlFor="password">Password</label>
+            <div className="field-password-wrap">
+              <input
+                id="password"
+                className="field-input"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={function (e) { setPassword(e.target.value); }}
+                autoComplete="current-password"
+                placeholder="Password kamu"
+              />
+              <button
+                type="button"
+                className="field-password-toggle"
+                onClick={function () { setShowPassword(!showPassword); }}
+                aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
+          </div>
+
+          {error && <div className="field-error" role="alert">{error}</div>}
+
+          <button className="auth-submit" disabled={loading}>
+            {loading ? "Memproses..." : "Masuk"}
+          </button>
+        </form>
+
+        <div className="auth-switch">
+          Belum punya akun? <a href="/register">Daftar di sini</a>
         </div>
-      </main>
+      </div>
+      <div className="app-footer">designed by Najib.dev</div>
     </div>
   );
 }
