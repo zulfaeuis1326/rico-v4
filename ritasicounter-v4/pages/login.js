@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { apiJson } from "../lib/apiClient";
+import Combobox from "../components/Combobox";
 import AuthDots from "../components/AuthDots";
 
 function EyeIcon() {
@@ -20,22 +21,50 @@ function EyeOffIcon() {
   );
 }
 
+const ROLE_OPTIONS = [
+  { value: "operator", label: "Operator — input ritasi per unit" },
+  { value: "pengawas", label: "Pengawas — monitoring & approval" },
+  { value: "admin", label: "Admin — kelola unit & akun" },
+  { value: "superadmin", label: "Superadmin — kontrol penuh" },
+];
+
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [role, setRole] = useState("operator");
+  const [units, setUnits] = useState([]);
+  const [unitId, setUnitId] = useState("");
+  const [newUnitName, setNewUnitName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(function () {
+    fetch("/api/units")
+      .then(function (res) { return res.json(); })
+      .then(function (data) { if (Array.isArray(data)) setUnits(data); })
+      .catch(function () {});
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    if (role === "operator" && !unitId && !newUnitName.trim()) {
+      setError("Operator wajib pilih nomor unit atau ketik unit baru.");
+      return;
+    }
     setLoading(true);
     try {
       await apiJson("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+          role,
+          unitId: role === "operator" ? unitId || undefined : undefined,
+          newUnitName: role === "operator" ? newUnitName.trim() || undefined : undefined,
+        }),
       });
       window.location.href = "/";
     } catch (err) {
@@ -51,7 +80,7 @@ export default function Login() {
       <div className="auth-card">
         <img src="/logo.png" alt="Logo perusahaan" className="auth-logo" onError={function (e) { e.target.style.display = "none"; }} />
         <div className="auth-title">RitasiCounter</div>
-        <div className="auth-subtitle">Masuk ke akun kamu</div>
+        <div className="auth-subtitle">Masuk sesuai peran kamu</div>
 
         <form onSubmit={handleSubmit}>
           <div className="field-group">
@@ -90,6 +119,41 @@ export default function Login() {
               </button>
             </div>
           </div>
+
+          <div className="field-group">
+            <label className="field-label" htmlFor="role">Masuk sebagai</label>
+            <select
+              id="role"
+              className="field-input"
+              value={role}
+              onChange={function (e) { setRole(e.target.value); setUnitId(""); setNewUnitName(""); }}
+            >
+              {ROLE_OPTIONS.map(function (o) {
+                return <option key={o.value} value={o.value}>{o.label}</option>;
+              })}
+            </select>
+          </div>
+
+          {role === "operator" && (
+            <div className="field-group">
+              <label className="field-label">Nomor Unit</label>
+              <Combobox
+                value={unitId}
+                onChange={function (v) { setUnitId(v || ""); }}
+                options={units.map(function (u) { return { value: String(u.id), label: u.name }; })}
+                placeholder="Cari nomor unit, misal HD-07..."
+                emptyLabel={units.length === 0 ? "Belum ada unit terdaftar" : null}
+              />
+              <input
+                className="field-input"
+                value={newUnitName}
+                onChange={function (e) { setNewUnitName(e.target.value); }}
+                placeholder="Atau ketik unit baru"
+                style={{ marginTop: 8 }}
+              />
+              <div className="hint" style={{ marginTop: 6 }}>Unit mengunci sesi kerja kamu sampai logout.</div>
+            </div>
+          )}
 
           {error && <div className="field-error" role="alert">{error}</div>}
 
